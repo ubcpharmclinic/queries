@@ -1,0 +1,44 @@
+<report title="Count pharmacist consultation hours" description="Returns the total number of hours a Pharmacist has spent in consultation between a given date range." active="1"><query>
+#6000 is 60 mins
+#Updated Mar 12, 2012 RN
+ 
+SELECT CONCAT(ROUND((Sum( ABS( ( ( a.end_time + 100 ) - a.start_time ) ) ) / 6000), 2), " ", "hours") AS 'Total Time',
+		CONCAT( p.first_name, " ", p.last_name ) AS Pharmacist,
+		MIN(a.appointment_date ) AS 'From',
+		MAX(a.appointment_date) AS 'To'
+
+FROM appointment a
+	LEFT JOIN appointmentType ar
+		ON ( ar.id = a.reasonCode )
+	INNER JOIN provider p
+		ON ( a.provider_no = p.provider_no )
+
+WHERE a.appointment_date >= '{apt_date_from}'
+	AND a.appointment_date <= '{apt_date_to}'
+	AND a.`status` LIKE '{aptstatus}%'
+	AND a.provider_no LIKE '{provider}';
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from:" />
+<param id="apt_date_to" type="date" description="Appointments to: " />
+<param id="provider" type="list" description="Pharmacist">
+<choice id="%">- All -</choice>
+	<param-query>
+	SELECT pr.provider_no, CONCAT(pr.last_name,',',pr.first_name,'(',pr.provider_no,')') 
+	FROM provider pr 
+	WHERE pr.provider_no IS NOT NULL 
+		AND pr.provider_no != '' 
+		AND pr.status = 1 
+ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+
+<param id="aptstatus" type="list" description="Appointment Status">
+<choice id="B">Billed</choice>
+<choice id="d">Do Not Bill</choice>
+<choice id="d">Home Visit</choice>
+<choice id="c">Phone</choice>
+<choice id="e">Off Site</choice>
+
+</param>
+</report>
