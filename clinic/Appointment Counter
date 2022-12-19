@@ -1,0 +1,56 @@
+<report title="Appointment Counter" description="Reports total number of patient appointments  between the specified dates by clinician. Displays demographic number, patient name, clinician name, and number of appointments. Sorted by appointment count descending." active="1">
+
+<query>
+
+SELECT 
+	demographic_no AS 'DEMO #',
+	name AS 'PATIENT_NAME',
+	a.provider_no AS 'PROVIDER_NO',
+	CONCAT('Dr. ', p.last_name) AS 'CLINICIAN_NAME',
+	COUNT(demographic_no) AS 'NUM_OF_APPT',
+	LEFT(appointment_date, 4) AS 'APPT_YEAR'
+
+FROM 
+	appointment a
+INNER JOIN 
+	provider p
+	ON a.provider_no = p.provider_no
+
+WHERE 
+	appointment_date > '{start_date}'
+	AND appointment_date < '{end_date}'
+	AND p.provider_no = '{provider_no}'
+	AND a.status <> 'N'
+	AND a.status <> 'C'
+	AND a.demographic_no <> '0'
+	AND a.demographic_no NOT IN ('2694', '2736')
+
+
+GROUP BY 
+	APPT_YEAR, 
+	demographic_no HAVING COUNT(NUM_OF_APPT) > '{min_appt_num}'
+
+ORDER BY 
+	NUM_OF_APPT DESC;
+</query>
+
+<param id="min_appt_num" type="text" description="Min. # of Appts. (e.g. 0):">
+</param>
+                
+<param id="start_date" type="date" description="Appointments from:">
+</param>
+
+<param id="end_date" type="date" description="Appointments to:">
+</param>
+
+<param id="provider_no" type="list" description="Appointment Provider Name">
+<param-query> 
+SELECT "'%'" as provider_no, 'all providers' as provider 
+UNION 
+SELECT provider_no, concat(last_name,',',first_name,'(',provider_no,')') from provider 
+WHERE status='1' 
+ORDER BY provider_no;
+</param-query>
+</param>
+
+</report>
