@@ -1,0 +1,43 @@
+<report title="PT by family physician and provider" description="Returns a list of patients grouped by family physician seen by a Pharmacist" active="1"><query>
+SELECT CONCAT(d.last_name, ", ", d.first_name) AS `Patient`, md.doctor, md.specialty, a.type
+FROM ( 
+	SELECT dc.demographicNo, dc.type, dc.contactId, dc.category, CONCAT(c.lastName, ", ", c.firstName) AS 'doctor', cs.specialty
+	FROM DemographicContact dc
+	JOIN Contact c
+	ON (dc.contactId = c.id AND dc.type = 2) 
+	JOIN ContactSpecialty cs
+	ON (cs.id = dc.role) 
+	WHERE dc.deleted = 0
+	UNION
+	SELECT dc.demographicNo, dc.type, dc.contactId, dc.category, CONCAT(ps.lName, ", ", ps.fName) AS 'MD', cs.specialty
+	FROM DemographicContact dc
+	JOIN professionalSpecialists ps
+	ON (ps.specId = dc.contactId AND dc.type = 3) 
+	JOIN ContactSpecialty cs
+	ON (cs.id = dc.role)
+	WHERE dc.deleted = 0
+) md
+JOIN demographic d
+ON (d.demographic_no = md.demographicNo)
+JOIN appointment a
+ON (a.demographic_no = d.demographic_no)
+WHERE md.category = 'professional'
+AND md.type != 0
+AND a.provider_no LIKE {provider}
+AND md.doctor LIKE '{doctorname}%'
+AND a.appointment_date >= '{date_from}' 
+AND a.appointment_date <= '{date_to}'
+AND d.last_name NOT LIKE 'Booked'
+GROUP BY d.demographic_no HAVING COUNT(d.demographic_no) > -1
+ORDER BY d.last_name;
+</query>
+<param id="doctorname" type="text" description="Practitioner (last, first name)" />
+<param id="date_from" type="date" description="From date" />
+<param id="date_to" type="date" description="To date" />
+<param id="provider" type="list" description="Provider">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, CONCAT(pr.last_name,',',pr.first_name,'(',pr.provider_no,')') FROM provider pr WHERE pr.ohip_no IS NOT NULL AND pr.ohip_no != '' AND pr.status = 1 ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+</report>
