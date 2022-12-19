@@ -1,0 +1,46 @@
+<report title="Average Meds in Appointment Group" description="Please select a specific clinician. Displays the number of medications taken by each patient in a group determined by appointment date. Export to Excel to calculate average." active="1"><query>
+
+SELECT 
+    d.demographic_no AS 'PT demographic number', 
+    COUNT(DISTINCT dr.drugid) AS '# of meds PT takes'
+
+FROM 
+    demographic d
+INNER JOIN drugs dr 
+    ON (d.demographic_no = dr.demographic_no)
+INNER JOIN appointment a 
+    ON (d.demographic_no = a.demographic_no) 
+INNER JOIN provider p 
+    ON (a.provider_no = p.provider_no)
+
+WHERE 
+    d.last_name NOT LIKE 'BOOKED'
+        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+        AND a.appointment_date BETWEEN 
+        IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+            AND 
+        IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
+    AND a.provider_no LIKE '{provider}' 
+    AND dr.archived = 0
+
+GROUP BY d.demographic_no
+
+LIMIT 100; 
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from: " />
+
+<param id="apt_date_to" type="date" description="Appointments to: " />
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', 'All clinicians')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+</report>
