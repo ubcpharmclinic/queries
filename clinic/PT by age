@@ -1,0 +1,28 @@
+<report title="PT by age" description="Search for patients by appointment date and by age range. Displays patient name, dob, and age. Sorted alphabetically by last name." active="1">
+
+<query>
+	SELECT
+		d.last_name,
+		d.first_name,
+		CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth',
+		DATEDIFF(CURDATE(), CONCAT(d.year_of_birth, "-", d.month_of_birth, "-",  		d.date_of_birth))/365 AS 'Age'
+	FROM 
+		demographic d 
+	INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no) 
+	WHERE 
+		a.appointment_date > '{apt_date_from}' 
+		AND a.appointment_date < '{apt_date_to}'
+		AND DATEDIFF(CURDATE(), CONCAT(d.year_of_birth, "-", d.month_of_birth, "-",  		d.date_of_birth))/365 > '{age_from}'
+		AND DATEDIFF(CURDATE(), CONCAT(d.year_of_birth, "-", d.month_of_birth, "-",  		d.date_of_birth))/365 < '{age_to}'
+
+	ORDER BY 
+		d.last_name;
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from:"> </param>
+<param id="apt_date_to" type="date" description="Appointments to:"> </param>
+<param id="age_from" type="text" description="Ages from (e.g. 10):"> </param>
+<param id="age_to" type="text" description="Ages to (e.g. 20):"> </param>
+
+</report>
