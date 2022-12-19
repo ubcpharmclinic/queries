@@ -1,0 +1,78 @@
+<report title="Drug Therapy Problems (DTP)" description="Fetches DTPs recorded for each patient by appointment date range" active="1"><query>
+SELECT
+	d.demographic_no AS 'Pt. ID',
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient (Last, First)',
+	d.sex AS 'Sex',
+	CONCAT(d.year_of_birth, "-", d.month_of_birth, "-", d.date_of_birth) AS 'DOB (yy-mm-dd)',
+	a.appointment_date AS 'Appt. Day (yy-mm-dd)',
+	CONCAT(pa.last_name, ", ", pa.first_name, " (", pa.specialty, ")" ) AS 'Appt. Pharmacist',
+	IFNULL(ADR.dataField, 0) + IFNULL(COMP.dataField, 0) + 
+	IFNULL(NADD.dataField, 0) + IFNULL(DOTL.dataField, 0) + 
+	IFNULL(DOTH.dataField, 0) + IFNULL(UNDT.dataField, 0) + 
+	IFNULL(DRIN.dataField, 0) + IFNULL(INED.dataField, 0) AS 'ATPS',
+	IFNULL(ADR.dataField, '') AS 'ADR',
+	IFNULL(COMP.dataField, '') AS 'COMP',
+	IFNULL(NADD.dataField, '') AS 'NADD',
+	IFNULL(DOTL.dataField, '') AS 'DOTL',
+	IFNULL(DOTH.dataField, '') AS 'DOTH',
+	IFNULL(UNDT.dataField, '') AS 'UNDT',
+	IFNULL(DRIN.dataField, '') AS 'DRIN',
+	IFNULL(INED.dataField, '') AS 'INED'
+FROM demographic d
+JOIN appointment a
+ON (a.demographic_no = d.demographic_no 
+	AND date_format(a.appointment_date, '%Y-%m-%d') >= '{apt_date_from}'
+	AND date_format(a.appointment_date, '%Y-%m-%d') <= '{apt_date_to}')
+	LEFT JOIN measurements ADR
+	ON (ADR.demographicNo = d.demographic_no 
+		AND ADR.type LIKE "%ADR%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(ADR.dateObserved, '%Y-%m-%d') )
+	LEFT JOIN measurements COMP
+	ON (ADR.demographicNo = d.demographic_no 
+		AND COMP.type LIKE "%COMP%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(COMP.dateObserved, '%Y-%m-%d') )
+	LEFT JOIN measurements NADD
+	ON (NADD.demographicNo = d.demographic_no 
+		AND NADD.type LIKE "%NADD%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(NADD.dateObserved, '%Y-%m-%d') )
+	LEFT JOIN measurements DOTL
+	ON (DOTL.demographicNo = d.demographic_no 
+		AND DOTL.type LIKE "%DOTL%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(DOTL.dateObserved, '%Y-%m-%d') )
+	LEFT JOIN measurements DOTH
+	ON (DOTH.demographicNo = d.demographic_no 
+		AND DOTH.type LIKE "%DOTH%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(DOTH.dateObserved, '%Y-%m-%d') )
+	LEFT JOIN measurements UNDT
+	ON (UNDT.demographicNo = d.demographic_no 
+		AND UNDT.type LIKE "%UNDT%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(UNDT.dateObserved, '%Y-%m-%d') )
+	LEFT JOIN measurements DRIN
+	ON (DRIN.demographicNo = d.demographic_no 
+		AND DRIN.type LIKE "%DRIN%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(DRIN.dateObserved, '%Y-%m-%d') )
+	LEFT JOIN measurements INED
+	ON (INED.demographicNo = d.demographic_no 
+		AND INED.type LIKE "%INED%" 
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(INED.dateObserved, '%Y-%m-%d') )
+JOIN provider pa
+ON (pa.provider_no = a.provider_no)
+WHERE a.provider_no LIKE '{provider}'
+AND ( d.demographic_no != 1 AND d.demographic_no != 2 )
+AND d.patient_status LIKE "%ac%"
+AND ( a.status NOT LIKE "%c%" AND a.status NOT LIKE "%n%" AND a.status NOT LIKE "%cs%" AND a.status NOT LIKE "%ns%" )
+GROUP BY  d.demographic_no, a.appointment_date HAVING COUNT(a.appointment_date) > -1
+ORDER BY d.last_name, a.appointment_date;
+</query>
+
+<param id="apt_date_from" type="date" description="Start Date" />
+<param id="apt_date_to" type="date" description="End Date" />
+
+<param id="provider" type="list" description="Pharmacist">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, CONCAT(pr.last_name,',',pr.first_name,'(',pr.provider_no,')') FROM provider pr WHERE pr.ohip_no IS NOT NULL AND pr.ohip_no != '' AND pr.status = 1 ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+
+</report>
