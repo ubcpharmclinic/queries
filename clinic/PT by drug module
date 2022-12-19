@@ -1,0 +1,43 @@
+<report title="PT by drug module" description="Search for patients by prescribed drug, provider, and prescribed date. Displays demographic number, drug name, patient name, and provider number. Sorted alphabetically by patient last name." active="1">
+
+<query>
+   	SELECT 
+		dr.demographic_no, 
+		dr.BN, 
+		d.last_name, 
+		d.first_name,
+                dr.provider_no 
+   	FROM
+		drugs dr
+	INNER JOIN 
+		demographic d 
+		ON (dr.demographic_no = d.demographic_no)
+   	WHERE
+		dr.provider_no = '{provider}'
+		AND 
+			(dr.BN LIKE '%{drugname}%' OR dr.GN LIKE '%{drugname}%') 
+		AND 
+		dr.rx_date > '{rx_date}' 
+	ORDER BY 
+		d.last_name;
+</query>
+
+<param id="drugname" type="text" description="Drug keyword (e.g. ibuprofen):">
+</param>
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1
+	AND p.provider_type != 'admin')
+UNION
+(SELECT '%', 'All clinicians')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+<param id="rx_date" type="date" description="Rx date (from date):">
+</param>
+
+</report>
