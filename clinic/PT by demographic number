@@ -1,0 +1,10 @@
+<report title="PT by demographic number" description="Search for a patient by demographic number. Displays name, date of birth, hin, etc." active="1">
+
+<query>
+	SELECT d.last_name, d.first_name, CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth', d.hin FROM demographic d WHERE d.demographic_no LIKE '{search_demographic_no}';
+</query>
+
+<param id="search_demographic_no" type="text" description="Patient demographic number (e.g. 1000):">
+</param>
+
+</report>
