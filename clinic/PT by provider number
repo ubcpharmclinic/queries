@@ -1,0 +1,27 @@
+<report title="PT by provider number" description="Search for patients by clinician via their provider number. Displays patient name, patient address, and provider number. Sorted alphabetically by patient last name. Limited to prevent overflow..." active="1">
+
+<query>
+	SELECT
+		d.last_name, 
+		d.first_name,
+		d.address, 
+		d.city, 
+		d.postal, 
+		dc.contactId
+	FROM 
+		demographic d
+	INNER JOIN 
+		DemographicContact dc
+		ON d.demographic_no = dc.demographicNo
+	WHERE 
+		dc.type = 0
+	AND 
+		dc.contactId = '{search_provider_no}'
+	ORDER BY 
+		d.last_name;
+</query>
+
+<param id="search_provider_no" type="text" description="Provider number from OSCAR ADMIN provider record (e.g. 1004):">
+</param>
+
+</report>
