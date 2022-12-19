@@ -1,0 +1,132 @@
+<report title="Count actions by pharmacist" description="Counts the number of actions taken by a pharmacist during a patient appointment." active="1"><query>
+SELECT d.demographic_no AS 'Pt. ID',
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient (Last, First)',
+	d.sex AS 'Sex',
+	CONCAT(d.year_of_birth, "-", d.month_of_birth, "-", d.date_of_birth) AS 'DOB (y-m-d)',
+	a.appointment_date AS 'Appt. Day (y-m-d)',
+	CONCAT(pa.last_name, ", ", pa.first_name, " (", pa.specialty, ")" ) AS 'Appt. Pharmacist',
+	
+	#Total Actions in time frame
+	(#EPTB 	ELIMINATE PATIENT BARRIER
+	IFNULL(EPTB.dataField, '') +
+	#INMO 	INITIATE MONITORING
+	IFNULL(INMO.dataField, '') +
+	#REMD 	REFER TO MD
+	IFNULL(REMD.dataField, '') +
+	#REOT	REFER TO OTHER HEALTH PROFESSIONAL
+	IFNULL(REOT.dataField, '') +
+	#CNRX  	CHANGE NON RX
+	IFNULL(CNRX.dataField, '') +
+	#CRX 	CHANGE RX
+	IFNULL(CRX.dataField, '') +
+	#SNRX	START NON RX
+	IFNULL(SNRX.dataField, '') +
+	#SRX 	START RX
+	IFNULL(SRX.dataField, '') +
+	#STNR  	STOP NON RX
+	IFNULL(STNR.dataField, '') +
+	#STR 	STOP RX
+	IFNULL(STR.dataField, '') ) AS '# Actions',
+
+	#EPTB 	ELIMINATE PATIENT BARRIER
+	IFNULL(EPTB.dataField, '') AS 'EPTB',
+	#INMO 	INITIATE MONITORING
+	IFNULL(INMO.dataField, '') AS 'INMO',
+	#REMD 	REFER TO MD
+	IFNULL(REMD.dataField, '') AS 'REMD',
+	#REOT	REFER TO OTHER HEALTH PROFESSIONAL
+	IFNULL(REOT.dataField, '') AS 'REOT',
+	#CNRX  	CHANGE NON RX
+	IFNULL(CNRX.dataField, '') AS 'CNRX',
+	#CRX 	CHANGE RX
+	IFNULL(CRX.dataField, '') AS 'CRX',
+	#SNRX	START NON RX
+	IFNULL(SNRX.dataField, '') AS 'SNRX',
+	#SRX 	START RX
+	IFNULL(SRX.dataField, '') AS 'SRX',
+	#STNR  	STOP NON RX
+	IFNULL(STNR.dataField, '') AS 'STNR',
+	#STR 	STOP RX
+	IFNULL(STR.dataField, '') AS 'STR'
+
+FROM demographic d
+JOIN appointment a
+	ON (a.demographic_no = d.demographic_no
+	AND DATE(a.appointment_date) BETWEEN '{apt_date_from}' AND '{apt_date_to}')
+
+	#EPTB 	ELIMINATE PATIENT BARRIER
+	LEFT JOIN measurements EPTB
+		ON (EPTB.demographicNo = d.demographic_no
+		AND EPTB.type LIKE "%EPTB%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(EPTB.dateObserved, '%Y-%m-%d') )
+	#INMO 	INITIATE MONITORING
+	LEFT JOIN measurements INMO
+		ON (INMO.demographicNo = d.demographic_no
+		AND INMO.type LIKE "%INMO%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(INMO.dateObserved, '%Y-%m-%d') )
+	#REMD 	REFER TO MD
+	LEFT JOIN measurements REMD
+		ON (REMD.demographicNo = d.demographic_no
+		AND REMD.type LIKE "%REMD%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(REMD.dateObserved, '%Y-%m-%d') )
+	#REOT	REFER TO OTHER HEALTH PROFESSIONAL
+	LEFT JOIN measurements REOT
+		ON (REOT.demographicNo = d.demographic_no
+		AND REOT.type LIKE "%REOT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(REOT.dateObserved, '%Y-%m-%d') )
+	#CNRX  	CHANGE NON RX
+	LEFT JOIN measurements CNRX
+		ON (CNRX.demographicNo = d.demographic_no
+		AND CNRX.type LIKE "%CNRX%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(CNRX.dateObserved, '%Y-%m-%d') )
+	#CRX 	CHANGE RX
+	LEFT JOIN measurements CRX
+		ON (CRX.demographicNo = d.demographic_no
+		AND CRX.type LIKE "%CRX%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(CRX.dateObserved, '%Y-%m-%d') )
+	#SNRX	START NON RX
+	LEFT JOIN measurements SNRX
+		ON (SNRX.demographicNo = d.demographic_no
+		AND SNRX.type LIKE "%SNRX%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(SNRX.dateObserved, '%Y-%m-%d') )
+	#SRX 	START RX
+	LEFT JOIN measurements SRX
+		ON (SRX.demographicNo = d.demographic_no
+		AND SRX.type LIKE "%SRX%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(SRX.dateObserved, '%Y-%m-%d') )
+	#STNR  	STOP NON RX
+	LEFT JOIN measurements STNR
+		ON (STNR.demographicNo = d.demographic_no
+		AND STNR.type LIKE "%STNR%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(STNR.dateObserved, '%Y-%m-%d') )
+	#STR 	STOP RX
+	LEFT JOIN measurements STR
+		ON (STR.demographicNo = d.demographic_no
+		AND STR.type LIKE "%STR%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(STR.dateObserved, '%Y-%m-%d') )
+JOIN provider pa
+	ON (pa.provider_no = a.provider_no)
+WHERE a.provider_no LIKE '{provider}'
+AND ( d.last_name NOT LIKE '%TEST%' AND d.last_name NOT LIKE '%BOOP%' )
+AND d.patient_status LIKE "%ac%"
+AND ( a.status NOT LIKE "%c%" AND a.status NOT LIKE "%n%" AND a.status NOT LIKE "%cs%" AND a.status NOT LIKE "%ns%" )
+GROUP BY  d.demographic_no, a.appointment_date HAVING COUNT(a.appointment_date) > -1
+ORDER BY d.last_name, a.appointment_date;
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from: " />
+<param id="apt_date_to" type="date" description="Appointments to:" />
+
+<param id="provider" type="list" description="Pharmacist">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, 
+CONCAT(pr.last_name, ', ', pr.first_name, ' (', pr.specialty, ')') 
+FROM provider pr 
+WHERE pr.provider_no IS NOT NULL 
+AND pr.provider_no != '' 
+AND pr.status = 1 
+ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+</report>
