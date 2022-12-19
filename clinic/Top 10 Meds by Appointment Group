@@ -1,0 +1,37 @@
+<report title="Top 10 Meds by Appointment Group" description="Top 10 medications taken by a group of patients by appointment date" active="1"><query>
+SELECT COUNT(dr.GCN_SEQNO) AS 'Number', 
+dr.BN AS 'Brand Name', 
+dr.GN AS 'Generic Name'
+	FROM demographic d
+	JOIN appointment a
+	ON (a.demographic_no = d.demographic_no)
+	JOIN provider p
+	ON (p.provider_no = a.provider_no)
+	LEFT JOIN drugs dr
+	ON (dr.demographic_no = d.demographic_no)
+	WHERE dr.archived = 0
+	AND p.provider_no LIKE '{provider}'
+	AND DATE(a.appointment_date) BETWEEN '{apt_date_from}' AND '{apt_date_to}'
+	AND dr.GCN_SEQNO > 0
+	GROUP BY dr.GCN_SEQNO HAVING COUNT(dr.GCN_SEQNO) > -1 
+	ORDER BY COUNT(dr.GCN_SEQNO) DESC
+LIMIT 10;
+
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from: " />
+<param id="apt_date_to" type="date" description="Appointments to: " />
+
+<param id="provider" type="list" description="Pharmacist">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, 
+CONCAT(pr.last_name, ', ', pr.first_name, ' (', pr.specialty, ')') 
+FROM provider pr 
+WHERE pr.provider_no IS NOT NULL 
+AND pr.provider_no != '' 
+AND pr.status = 1 
+ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+</report>
