@@ -1,0 +1,31 @@
+<report title="Disease Registry-by Requested Code Lookup" description="Patient Records with Registered Disease" active="1">
+ 
+<query>
+SELECT d.demographic_no AS "Demographic No.", 
+	d.last_name AS "Last Name", 
+	d.first_name AS "First Name", 
+	CONCAT(d.date_of_birth,'/',d.month_of_birth,'/',d.year_of_birth)"Date of Birth",
+	d.address AS "Address", 
+	d.city AS "City", 
+	d.postal AS "Postal Code", 
+	d.phone AS "Phone", 
+	d.sex AS "Sex", 
+	d.hin AS "PHN", 
+	i.patientFriendly AS "Disease Code"
+FROM demographic d, 
+	dxresearch dx
+INNER JOIN Icd9Synonym i
+	ON (dx.dxresearch_code=i.dxcode)
+WHERE d.patient_status = 'AC' 
+	AND dx.demographic_no = d.demographic_no
+	AND i.patientFriendly = "{icd9}"
+ORDER BY last_name;
+</query>
+
+<param id="icd9" type="list" description="Disease Code">
+<param-query>
+SELECT DISTINCT i.patientFriendly, i.patientFriendly FROM Icd9Synonym i WHERE patientFriendly !='' ORDER BY patientFriendly ASC;
+</param-query>
+</param>
+
+</report>
