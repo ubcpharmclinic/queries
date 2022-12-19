@@ -1,0 +1,209 @@
+<report title="Point of Care Measurements by Group" description="Returns all the point of care measurements for each patient in an appointment group segment." active="1"><query>
+
+SELECT d.demographic_no AS 'Pt. ID',
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient (Last, First)',
+	d.sex AS 'Sex',
+	CONCAT(d.year_of_birth, "-", d.month_of_birth, "-", d.date_of_birth) AS 'DOB (y-m-d)',
+	a.appointment_date AS 'Appt. Day (y-m-d)',
+	CONCAT(pa.last_name, ", ", pa.first_name, " (", pa.specialty, ")" ) AS 'Appt. Pharmacist',	
+	#	A1C		A1C
+	IFNULL(A1C.dataField, '') AS 'A1C',
+		#	BMI		BMI
+	IFNULL(BMI.dataField, '') AS 'BMI',
+		#	BP		Blood Pressure
+	IFNULL(BP.dataField, '') AS 'BP',
+                #       CANR    CANR
+        IFNULL(CANR.dataField, '') AS 'CANRISK',
+		#	CRCL	Creatinine Clearance
+	IFNULL(CRCL.dataField, '') AS 'CRCL',
+                #       DMS     DMS
+        IFNULL(DMS.dataField, '') AS 'DMS',
+		#	EGFR	EGFR
+	IFNULL(EGFR.dataField, '') AS 'EGFR',
+                #       EXER     EXER
+        IFNULL(Exer.dataField, '') AS 'EXER',
+                #       FOOD    FOOD
+        IFNULL(FOOD.dataField, '') AS 'FRUIT/VEG',
+		#	FRAM	Framingham 10 year CAD
+	IFNULL(FRAM.dataField, '') AS 'FRAM',
+		#	FRX1	Major Risk FRAX
+	IFNULL(FRX1.dataField, '') AS 'FRX1',
+		#	FRX2	Hip Risk FRAX
+	IFNULL(FRX2.dataField, '') AS 'FRX2',
+		#	FRXI	Major Risk FRAX
+	IFNULL(FRXI.dataField, '') AS 'FRXI',
+		#	HDL		High Density Lipid
+	IFNULL(HDL.dataField, '') AS 'HDL',
+		#	HT		Height
+	IFNULL(HT.dataField, '') AS 'HT',
+		#	INR		INR
+	IFNULL(INR.dataField, '') AS 'INR',
+		#	LDL		Low Density Lipid
+	IFNULL(LDL.dataField, '') AS 'LDL',
+		#	PTT		Activated PTT
+	IFNULL(PTT.dataField, '') AS 'PTT',
+		#	SPIR	Spirometry
+	IFNULL(SPIR.dataField, '') AS 'SPIR',
+		#	TCHD	LIPIDS TD/HDL
+	IFNULL(TCHD.dataField, '') AS 'TCHD',
+		#	TCHL	Total Cholestorol
+	IFNULL(TCHL.dataField, '') AS 'TCHL',
+		#	TG		LIPIDS TG
+	IFNULL(TG.dataField, '') AS 'TG',
+		#	WAIS	Waist
+	IFNULL(WAIS.dataField, '') AS 'WAIS',
+		#	WT		Weight
+	IFNULL(WT.dataField, '') AS 'WT'
+
+FROM demographic d
+JOIN appointment a
+	ON (a.demographic_no = d.demographic_no
+	AND DATE(a.appointment_date) BETWEEN '{apt_date_from}' AND '{apt_date_to}')
+
+#	A1C		A1C
+LEFT JOIN measurements A1C
+		ON (A1C.demographicNo = d.demographic_no
+		AND A1C.type LIKE "%A1C%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(A1C.dateObserved, '%Y-%m-%d') )
+#	BMI		BMI
+LEFT JOIN measurements BMI
+		ON (BMI.demographicNo = d.demographic_no
+		AND BMI.type LIKE "%BMI%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(BMI.dateObserved, '%Y-%m-%d') )
+#	BP		Blood Pressure
+LEFT JOIN measurements BP
+		ON (BP.demographicNo = d.demographic_no
+		AND BP.type LIKE "%BP%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(BP.dateObserved, '%Y-%m-%d') )
+#      CANR            CANRISK
+LEFT JOIN measurements CANR
+		ON (CANR.demographicNo = d.demographic_no
+		AND CANR.type LIKE "%CANR%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(CANR.dateObserved, '%Y-%m-%d') )
+#	CRCL	Creatinine Clearance
+LEFT JOIN measurements CRCL
+		ON (CRCL.demographicNo = d.demographic_no
+		AND CRCL.type LIKE "%CRCL%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(CRCL.dateObserved, '%Y-%m-%d') )
+#       DMS     DMS
+LEFT JOIN measurements DMS
+		ON (DMS.demographicNo = d.demographic_no
+		AND DMS.type LIKE "%DMS%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(DMS.dateObserved, '%Y-%m-%d') )
+#	EGFR	EGFR
+LEFT JOIN measurements EGFR
+		ON (EGFR.demographicNo = d.demographic_no
+		AND EGFR.type LIKE "%EGFR%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(EGFR.dateObserved, '%Y-%m-%d') )
+#       EXER    EXER
+LEFT JOIN measurements Exer
+		ON (Exer.demographicNo = d.demographic_no
+		AND Exer.type LIKE "%Exer%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(Exer.dateObserved, '%Y-%m-%d') )
+#       FOOD    Fruit or Veg
+LEFT JOIN measurements FOOD
+		ON (FOOD.demographicNo = d.demographic_no
+		AND FOOD.type LIKE "%FOOD%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FOOD.dateObserved, '%Y-%m-%d') )
+#	FRAM	Framingham 10 year CAD
+LEFT JOIN measurements FRAM
+		ON (FRAM.demographicNo = d.demographic_no
+		AND FRAM.type LIKE "%FRAM%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FRAM.dateObserved, '%Y-%m-%d') )
+#	FRX1	Major Risk FRAX
+LEFT JOIN measurements FRX1
+		ON (FRX1.demographicNo = d.demographic_no
+		AND FRX1.type LIKE "%FRX1%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FRX1.dateObserved, '%Y-%m-%d') )
+#	FRX2	Hip Risk FRAX
+LEFT JOIN measurements FRX2
+		ON (FRX2.demographicNo = d.demographic_no
+		AND FRX2.type LIKE "%FRX2%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FRX2.dateObserved, '%Y-%m-%d') )
+#	FRXI	Major Risk FRAX
+LEFT JOIN measurements FRXI
+		ON (FRXI.demographicNo = d.demographic_no
+		AND FRXI.type LIKE "%FRXI%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FRXI.dateObserved, '%Y-%m-%d') )
+#	HDL		High Density Lipid
+LEFT JOIN measurements HDL
+		ON (HDL.demographicNo = d.demographic_no
+		AND HDL.type LIKE "%HDL%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(HDL.dateObserved, '%Y-%m-%d') )
+#	HT		Height
+LEFT JOIN measurements HT
+		ON (HT.demographicNo = d.demographic_no
+		AND HT.type LIKE "%HT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(HT.dateObserved, '%Y-%m-%d') )
+#	INR		INR
+LEFT JOIN measurements INR
+		ON (INR.demographicNo = d.demographic_no
+		AND INR.type LIKE "%INR%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(INR.dateObserved, '%Y-%m-%d') )
+#	LDL		Low Density Lipid
+LEFT JOIN measurements LDL
+		ON (LDL.demographicNo = d.demographic_no
+		AND LDL.type LIKE "%LDL%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(LDL.dateObserved, '%Y-%m-%d') )
+#	PTT		Activated PTT
+LEFT JOIN measurements PTT
+		ON (PTT.demographicNo = d.demographic_no
+		AND PTT.type LIKE "%PTT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(PTT.dateObserved, '%Y-%m-%d') )
+#	SPIR	Spirometry
+LEFT JOIN measurements SPIR
+		ON (SPIR.demographicNo = d.demographic_no
+		AND SPIR.type LIKE "%SPIR%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(SPIR.dateObserved, '%Y-%m-%d') )
+#	TCHD	LIPIDS TD/HDL
+LEFT JOIN measurements TCHD
+		ON (TCHD.demographicNo = d.demographic_no
+		AND TCHD.type LIKE "%TCHD%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(TCHD.dateObserved, '%Y-%m-%d') )
+#	TCHL	Total Cholestorol
+LEFT JOIN measurements TCHL
+		ON (TCHL.demographicNo = d.demographic_no
+		AND TCHL.type LIKE "%TCHL%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(TCHL.dateObserved, '%Y-%m-%d') )
+#	TG		LIPIDS TG
+LEFT JOIN measurements TG
+		ON (TG.demographicNo = d.demographic_no
+		AND TG.type LIKE "%TG%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(TG.dateObserved, '%Y-%m-%d') )
+#	WAIS	Waist
+LEFT JOIN measurements WAIS
+		ON (WAIS.demographicNo = d.demographic_no
+		AND WAIS.type LIKE "%WAIS%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(WAIS.dateObserved, '%Y-%m-%d') )
+#	WT		Weight
+LEFT JOIN measurements WT
+		ON (WT.demographicNo = d.demographic_no
+		AND WT.type LIKE "%WT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(WT.dateObserved, '%Y-%m-%d') )
+
+JOIN provider pa
+	ON (pa.provider_no = a.provider_no)
+WHERE a.provider_no LIKE '{provider}'
+AND ( d.last_name NOT LIKE '%TEST%' AND d.last_name NOT LIKE '%BOOP%' )
+AND d.patient_status LIKE "%ac%"
+AND ( a.status NOT LIKE "%c%" AND a.status NOT LIKE "%n%" AND a.status NOT LIKE "%cs%" AND a.status NOT LIKE "%ns%" )
+GROUP BY  d.demographic_no, a.appointment_date HAVING COUNT(a.appointment_date) > -1
+ORDER BY d.last_name, a.appointment_date;	
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from:" />
+<param id="apt_date_to" type="date" description="Appointments to: " />
+
+<param id="provider" type="list" description="Pharmacist">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, 
+CONCAT(pr.last_name, ', ', pr.first_name, ' (', pr.specialty, ')') 
+FROM provider pr 
+WHERE pr.provider_no IS NOT NULL 
+AND pr.provider_no != '' 
+AND pr.status = 1 
+ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+</report>
