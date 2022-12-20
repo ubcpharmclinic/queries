@@ -1,0 +1,120 @@
+<report title="Encounter by Patient" description="Encounter by Patient - v1.2" active="1">
+
+<query>
+SELECT PatientID,
+	Patient,
+	Phone
+FROM(SELECT DISTINCT d.demographic_no AS 'PatientID', 
+		CONCAT(d.last_name, ', ', d.first_name) AS 'Patient', 
+		d.phone AS 'Phone',
+		i.patientFriendly AS 'ICD9'
+	FROM dxresearch dx
+		INNER JOIN Icd9Synonym i
+			ON (dx.dxresearch_code=i.dxcode)
+		INNER JOIN demographic d
+			ON (dx.demographic_no=d.demographic_no)
+		INNER JOIN measurements m
+			ON (d.demographic_no=m.demographicNo)
+		INNER JOIN measurementType mt
+			ON (m.type=mt.type)
+		INNER JOIN measurementGroup mg
+			ON (mg.typeDisplayName=mt.typeDisplayName)
+		INNER JOIN provider p
+			ON (m.providerNo=p.provider_no)
+	WHERE (i.patientFriendly LIKE '{icd9}' OR i.patientFriendly LIKE '{icd9_2}')
+		AND (
+			(mg.name LIKE 'Drug Therapy Problems' AND mt.typeDisplayName LIKE '{dtp}')
+			OR (mg.name LIKE 'Actions by Pharmacist' AND mt.typeDisplayName LIKE '{abp}')
+			OR (mg.name LIKE 'Student Participation' AND mt.typeDisplayName LIKE '{stup}')
+			OR (mg.name LIKE 'Point of Care Testing' AND mt.typeDisplayName LIKE '{poct}')
+			OR (mg.name LIKE 'HMUI' AND mt.typeDisplayName LIKE '{hmui}')
+			)
+		AND (d.last_name != 'TEST')
+		AND m.dateObserved BETWEEN 
+			IF ('{obs_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{obs_date_from}') 
+				AND 
+			IF ('{obs_date_to}' = '', (CURRENT_DATE), '{obs_date_to}')
+	ORDER BY d.demographic_no) AS sel1
+	GROUP BY PatientID
+		HAVING COUNT(PatientID) > IF('{icd9_2}'='NULL', 0, 1)
+
+</query>
+
+<param id="icd9" type="list" description="Disease Code">
+<param-query>
+(SELECT DISTINCT patientFriendly AS icdid, patientFriendly FROM Icd9Synonym WHERE patientFriendly !='')
+UNION
+(SELECT '%', ' All')
+ORDER BY patientFriendly ASC;
+</param-query>
+</param>
+
+<param id="icd9_2" type="list" description="Disease Code 2">
+<param-query>
+(SELECT DISTINCT patientFriendly AS icdid_2, patientFriendly FROM Icd9Synonym WHERE patientFriendly !='')
+UNION
+(SELECT 'NULL', ' None')
+ORDER BY patientFriendly ASC;
+</param-query>
+</param>
+
+<param id="dtp" type="list" description="Drug Therapy Problems">
+<param-query>
+(SELECT typeDisplayName AS 'id', typeDisplayName AS 'name' FROM measurementGroup WHERE name LIKE 'Drug Therapy Problems')
+UNION
+(SELECT '%', ' All')
+UNION
+(SELECT 'NULL', '  None')
+ORDER BY name ASC;
+</param-query>
+</param>
+
+<param id="abp" type="list" description="Actions by pharmacist">
+<param-query>
+(SELECT typeDisplayName AS 'id', typeDisplayName AS 'name' FROM measurementGroup WHERE name LIKE 'Actions by Pharmacist')
+UNION
+(SELECT '%', ' All')
+UNION
+(SELECT 'NULL', '  None')
+ORDER BY name ASC;
+</param-query>
+</param>
+
+<param id="stup" type="list" description="Student Participation">
+<param-query>
+(SELECT typeDisplayName AS 'id', typeDisplayName AS 'name' FROM measurementGroup WHERE name LIKE 'Student Participation')
+UNION
+(SELECT '%', ' All')
+UNION
+(SELECT 'NULL', '  None')
+ORDER BY name ASC;
+</param-query>
+</param>
+
+<param id="poct" type="list" description="Point of Care Testing">
+<param-query>
+(SELECT typeDisplayName AS 'id', typeDisplayName AS 'name' FROM measurementGroup WHERE name LIKE 'Point of Care Testing')
+UNION
+(SELECT '%', ' All')
+UNION
+(SELECT 'NULL', '  None')
+ORDER BY name ASC;
+</param-query>
+</param>
+
+<param id="hmui" type="list" description="HMUI">
+<param-query>
+(SELECT typeDisplayName AS 'id', typeDisplayName AS 'name' FROM measurementGroup WHERE name LIKE 'HMUI')
+UNION
+(SELECT '%', ' All')
+UNION
+(SELECT 'NULL', '  None')
+ORDER BY name ASC;
+</param-query>
+</param>
+
+<param id="obs_date_from" type="text" description="Date observed from (YYYY-MM-DD, default: last 30 days) " />
+
+<param id="obs_date_to" type="text" description="Date observed to (YYYY-MM-DD, default: today)" />
+
+</report>
