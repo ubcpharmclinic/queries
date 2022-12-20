@@ -1,0 +1,136 @@
+<report title="Heart Health" description="Returns data recorded from Heart Health Clinics by date." active="1"><query>
+SELECT d.demographic_no AS 'Pt. ID',
+	#CONCAT(d.last_name, ", ", d.first_name) AS 'Patient (Last, First)',
+	d.sex AS 'Sex',
+	#CONCAT(d.year_of_birth, "-", d.month_of_birth, "-", d.date_of_birth) AS 'DOB (y-m-d)',
+	DATEDIFF(a.appointment_date, CONCAT(d.year_of_birth, "-", d.month_of_birth, "-", d.date_of_birth))/365 AS 'Age at Appointment',
+	a.appointment_date AS 'Appt. Day (y-m-d)',
+	CONCAT(pa.last_name, ", ", pa.first_name, " (", pa.specialty, ")" ) AS 'Appt. Pharmacist',	
+	a.`type`AS 'Appointment Type',
+	#	TCHL	Total Cholestorol
+	IFNULL(TCHL.dataField, '') AS 'TCHL',
+	#	HDL		High Density Lipid
+	IFNULL(HDL.dataField, '') AS 'HDL',
+	#	LDL		Low Density Lipid
+	IFNULL(LDL.dataField, '') AS 'LDL',
+	#	HT		Height
+	IFNULL(HT.dataField, '') AS 'HT',
+	#	WT		Weight
+	IFNULL(WT.dataField, '') AS 'WT',
+	#	BMI		BMI
+	IFNULL(BMI.dataField, '') AS 'BMI',
+	#	WAIS	Waist
+	IFNULL(WAIS.dataField, '') AS 'WAIS',
+	#	BP		Blood Pressure
+	IFNULL(BP.dataField, '') AS 'BP',
+        IF (BP.dataField=null, '', SUBSTRING_INDEX(BP.dataField, '/', 1)) AS 'SBP',
+	IF (BP.dataField=null, '', SUBSTRING_INDEX(BP.dataField, '/', -1)) AS 'DBP',
+	#	FRAM	Framingham 10 year CAD
+	IFNULL(FRAM.dataField, '') AS 'FRAM',
+	#	FUGP	Follow up with GP
+	IFNULL(FUGP.dataField, '') AS 'FU GP',
+	#	FUPC	Follow up with Pharm Clinic
+	IFNULL(FUPC.dataField, '') AS 'FU PC',
+	#	FU	    Other Follow up Recommeded
+	IFNULL(FU.dataField, '') AS 'FU Other'
+FROM demographic d
+JOIN appointment a
+	ON (a.demographic_no = d.demographic_no
+	AND DATE(a.appointment_date) BETWEEN '{apt_date_from}' AND '{apt_date_to}')
+#	TCHL	Total Cholestorol
+LEFT JOIN measurements TCHL
+		ON (TCHL.demographicNo = d.demographic_no
+		AND TCHL.type LIKE "%TCHL%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(TCHL.dateObserved, '%Y-%m-%d') )
+#	HDL		High Density Lipid
+LEFT JOIN measurements HDL
+		ON (HDL.demographicNo = d.demographic_no
+		AND HDL.type LIKE "%HDL%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(HDL.dateObserved, '%Y-%m-%d') )
+#	LDL		Low Density Lipid
+LEFT JOIN measurements LDL
+		ON (LDL.demographicNo = d.demographic_no
+		AND LDL.type LIKE "%LDL%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(LDL.dateObserved, '%Y-%m-%d') )
+#	HT		Height
+LEFT JOIN measurements HT
+		ON (HT.demographicNo = d.demographic_no
+		AND HT.type LIKE "%HT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(HT.dateObserved, '%Y-%m-%d') )		
+#	WT		Weight
+LEFT JOIN measurements WT
+		ON (WT.demographicNo = d.demographic_no
+		AND WT.type LIKE "%WT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(WT.dateObserved, '%Y-%m-%d') )
+#	BMI		BMI
+LEFT JOIN measurements BMI
+		ON (BMI.demographicNo = d.demographic_no
+		AND BMI.type LIKE "%BMI%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(BMI.dateObserved, '%Y-%m-%d') )
+#	WAIS	Waist
+LEFT JOIN measurements WAIS
+		ON (WAIS.demographicNo = d.demographic_no
+		AND WAIS.type LIKE "%WAIS%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(WAIS.dateObserved, '%Y-%m-%d') )
+#	BP		Blood Pressure
+LEFT JOIN measurements BP
+		ON (BP.demographicNo = d.demographic_no
+		AND BP.type LIKE "%BP%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(BP.dateObserved, '%Y-%m-%d') )
+#	FRAM	Framingham 10 year CAD
+LEFT JOIN measurements FRAM
+		ON (FRAM.demographicNo = d.demographic_no
+		AND FRAM.type LIKE "%FRAM%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FRAM.dateObserved, '%Y-%m-%d') )
+#	FUGP	Follow up GP
+LEFT JOIN measurements FUGP
+		ON (FUGP.demographicNo = d.demographic_no
+		AND FUGP.type LIKE "%FUGP%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FUGP.dateObserved, '%Y-%m-%d') )
+#	FUPC	Follow up Pharm Clinic
+LEFT JOIN measurements FUPC
+		ON (FUPC.demographicNo = d.demographic_no
+		AND FUPC.type LIKE "%FUPC%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FUPC.dateObserved, '%Y-%m-%d') )
+#	FU	Follow up Other
+LEFT JOIN measurements FU
+		ON (FU.demographicNo = d.demographic_no
+		AND FU.type LIKE "%FU%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(FU.dateObserved, '%Y-%m-%d') )		
+JOIN provider pa
+	ON (pa.provider_no = a.provider_no) 
+WHERE a.provider_no LIKE '{provider}'
+	AND ( d.last_name NOT LIKE '%TEST%' AND d.last_name NOT LIKE '%BOOP%' )
+	AND d.patient_status LIKE "%ac%"
+	AND ( a.status NOT LIKE "%c%" AND a.status NOT LIKE "%n%" AND a.status NOT LIKE "%cs%" AND a.status NOT LIKE "%ns%" )
+	AND a.`type` LIKE '{aType}'
+GROUP BY  d.demographic_no, a.appointment_date HAVING COUNT(a.appointment_date) > -1
+ORDER BY a.appointment_date;
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from:" />
+<param id="apt_date_to" type="date" description="Appointments to:" />
+
+<param id="provider" type="list" description="Pharmacist (Choose Team A):">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, 
+CONCAT(pr.last_name, ', ', pr.first_name, ' (', pr.specialty, ')') 
+FROM provider pr 
+WHERE pr.provider_no IS NOT NULL 
+AND pr.provider_no != '' 
+AND pr.status = 1 
+ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+
+<param id="aType" type="list" description="Appointment Type (Select BOps or THF):">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT name, name
+FROM appointmentType 
+ORDER BY name ASC;
+</param-query>
+</param>
+
+</report>
