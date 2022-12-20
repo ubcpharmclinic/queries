@@ -1,0 +1,69 @@
+<report title="FOR ALICIA AND REBECCA - Appointments by clinician" description="Generating appointment report by clinician/status/type within a date range" active="1">
+
+<query>
+SELECT
+	d.hin AS 'PHN', 
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient', 
+	a.appointment_date AS 'Appointment date',
+	CONCAT(p.first_name, " ", p.last_name) AS 'Clinician',
+    m.type,
+    m.providerNo, 
+    CONCAT(pm.first_name, " ", pm.last_name) AS 'Student',
+	m.dateEntered AS 'Date Entered'
+
+FROM 
+	demographic d
+	INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no) 
+	INNER JOIN provider p 
+		ON (a.provider_no = p.provider_no) 
+    LEFT JOIN measurements m 
+        ON (d.demographic_no = m.demographicNo)
+    LEFT JOIN provider pm 
+        ON (m.providerNo = pm.provider_no)
+	INNER JOIN LookupListItem lli 
+		ON (a.reasonCode = lli.id), 
+	(SELECT @totaltime:='00:00:00') c,
+        appointment_status s
+WHERE 
+	BINARY a.status LIKE '{aptstatus}%'
+        AND LEFT(a.status, '1') = LEFT(s.status, '1')
+        AND d.last_name NOT LIKE 'BOOKED'
+        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+        AND a.appointment_date BETWEEN 
+		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+			AND 
+		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
+	AND a.type LIKE '{apt_type}'
+    AND m.type LIKE '4YR'  
+	AND m.providerNo IN ('3121', '3124', '3126', '3130', '3144', '3147', '3154', '3155', '1002', '1001', '1004', '3008', '1005', '3127', '1006')
+	AND CONCAT(p.first_name, " ", p.last_name) NOT LIKE 'A Team'
+
+GROUP BY d.hin, m.providerNo
+ORDER BY a.appointment_date, a.start_time ASC; 
+</query>
+
+<param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days)" />
+
+<param id="apt_date_to" type="text" description="Appointments to (YYYY-MM-DD, default: today)" />
+
+<param id="aptstatus" type="list" description="Appointment Status">
+<param-query>
+(SELECT status, description
+FROM appointment_status)
+UNION
+(SELECT '%', ' All statuses')
+ORDER BY status ASC;
+</param-query>
+</param>
+
+<param id="apt_type" type="list" description="Appointment Type">
+<param-query>
+(SELECT DISTINCT a.type AS type_id, IF(a.type=' ','-All blanks-',a.type) AS type_list FROM appointment a)
+UNION
+(SELECT '%', ' All types')
+ORDER BY type_list ASC;
+</param-query>
+</param>
+
+</report>
