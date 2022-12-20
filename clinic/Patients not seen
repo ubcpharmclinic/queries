@@ -1,0 +1,31 @@
+<report title="Patients not seen" description="List of Patients who have not been seen within the specified number of years<br>This query does NOT include patients who have NEVER been seen" active="1">
+<query>
+SELECT CONCAT( p.last_name, ', ', p.first_name, ' (', d.provider_no, ')' ) as Physician,
+CONCAT( d.last_name, ', ', d.first_name ) as Patient,
+CONCAT( "(<a  target=new href=../../demographic/demographiccontrol.jsp?demographic_no=", d.demographic_no,   "&displaymode=edit&dboperation=search_detail/>", d.demographic_no, ")<a/>" ) as Link,
+d.Email, d.Phone, d.Phone2,
+MAX(a.appointment_date) as LastAppt, DATEDIFF( curdate(), MAX(a.appointment_date)) as Days
+  FROM demographic d, provider p, appointment a
+ WHERE d.provider_no = p.provider_no
+   AND d.provider_no = '{provider}'
+   AND d.patient_status = 'AC'
+   AND DATEDIFF( curdate(), ( SELECT MAX(appointment_date) FROM appointment
+                               WHERE demographic_no = d.demographic_no and provider_no = d.provider_no ) ) > '{years}' * 365
+   AND d.demographic_no = a.demographic_no AND d.provider_no = a.provider_no              
+GROUP BY d.demographic_no
+ORDER BY d.last_name, d.first_name
+LIMIT 50 ;
+</query>
+
+<param id="provider" type="list" description="Provider">
+   <param-query>
+      ( select distinct provider_no, concat(last_name,',',first_name,'(',provider_no,')') as name 
+         from provider where provider_type = 'doctor' and status = 1 )
+      UNION
+      ( select 'ALL', ' All providers' )
+      order by name ;
+   </param-query>
+</param> 
+<param id="years" type="text" description="Years"> </param>
+
+</report>
