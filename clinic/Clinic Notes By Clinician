@@ -1,0 +1,36 @@
+<report title="Clinic Notes by Clinician" description="Returns clinic notes for a given clinician by date range." active="1">
+<query>
+SELECT
+	d.demographic_no AS 'ID',
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient',
+	CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'DOB',
+	d.sex AS 'Sex',
+	c.observation_date AS 'Observation Date',
+	c.note AS 'Clinic Note',
+	CONCAT(p.first_name, " ", p.last_name) AS 'Clinician'
+FROM
+	casemgmt_note c
+	INNER JOIN demographic d ON (c.demographic_no = d.demographic_no)
+	INNER JOIN provider p ON (c.provider_no = p.provider_no)
+WHERE
+	c.observation_date BETWEEN DATE('{apt_date_from}') AND DATE ('{apt_date_to}')
+	AND c.provider_no LIKE '{provider}'
+
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from:" />
+
+<param id="apt_date_to" type="date" description="Appointments to:" />
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1
+	AND p.provider_type != 'admin')
+UNION
+(SELECT '%', 'All clinicians')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+</report>
