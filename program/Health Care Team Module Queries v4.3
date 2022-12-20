@@ -1,0 +1,106 @@
+<report title="Health Care Team Module Queries v4.3" description="Generates report showing a patient's providers (can be used to infer who referred a patient to the PCCP)." active="1">
+/*4.3 date first seen is has status billed and DNB, notes*/
+/*Updated 07/12/2022 by KZ, added Appointment Reason and Appointment Date*/
+<query>
+SELECT DISTINCT
+	d.demographic_no AS 'Patient demographic no.',  
+    CASE 
+        WHEN dc.type = 3 THEN CONCAT(ps.lName, ", ", ps.fName, " (", cs.specialty, ")") 
+        ELSE CONCAT(p.last_name, ", ", p.first_name)
+    END AS 'Healthcare Team Member(s)',
+    f_appt_date.appointment_date AS 'Date first seen',
+    CONCAT(p.first_name, " ", p.last_name) AS 'Clinician', 
+    n.content AS 'Notes', 
+    lrc.label AS "Appointment Reason",
+    a.appointment_date AS "Appointment Date"
+    
+FROM 
+    demographic d
+
+	INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no) 
+
+	INNER JOIN provider p 
+		ON (a.provider_no = p.provider_no) 
+    INNER JOIN DemographicContact dc
+        ON (d.demographic_no = dc.demographicNo)
+    INNER JOIN professionalSpecialists ps
+        ON (dc.contactId = ps.specId)    
+    INNER JOIN ContactSpecialty cs 
+        ON (dc.role = cs.id)
+    INNER JOIN 
+        /*Returns demographic numbers and date of first appointment between specified dates. first appointment 
+        determined by group by and order by functions*/
+        (SELECT 
+            demo_nums.demographic_no, 
+            a.appointment_date
+
+        FROM 
+            /*Returns demographic numbers of patients seen between specified dates*/
+            (SELECT 
+                d.demographic_no
+                
+                FROM 
+                    demographic d
+                    INNER JOIN appointment a 
+                        ON (d.demographic_no = a.demographic_no) 
+                    INNER JOIN provider p 
+                        ON (a.provider_no = p.provider_no) 
+                
+                WHERE 
+                    d.last_name NOT LIKE 'BOOKED'
+                        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+                        AND a.appointment_date BETWEEN 
+                        IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+                            AND 
+                        IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
+                    AND a.provider_no LIKE '{provider}' 
+                GROUP BY d.demographic_no
+                ORDER BY a.appointment_date ASC
+            ) AS demo_nums
+        INNER JOIN appointment a 
+            ON (demo_nums.demographic_no = a.demographic_no)
+        WHERE 
+            /*Either billed or do not bill*/
+            a.status LIKE 'B%' OR a.status LIKE 'f%'
+        GROUP BY demo_nums.demographic_no 
+        ORDER BY a.appointment_date ASC
+        ) AS f_appt_date
+        ON (f_appt_date.demographic_no = d.demographic_no)
+    LEFT JOIN  demographiccust n
+        ON (d.demographic_no = n.demographic_no)
+
+    LEFT JOIN 
+    LookupListItem lrc 
+	ON (a.reasonCode = lrc.id)
+
+WHERE 
+	d.last_name NOT LIKE 'BOOKED'
+        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+        AND a.appointment_date BETWEEN 
+		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+			AND 
+		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
+	AND a.provider_no LIKE '{provider}' 
+    AND a.status LIKE 'B%' 
+    AND dc.deleted = 0
+ORDER BY a.appointment_date, d.demographic_no ASC
+LIMIT 5000; 
+</query>
+
+<param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days)" />
+
+<param id="apt_date_to" type="text" description="Appointments to (YYYY-MM-DD, default: today)" />
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', 'All clinicians')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+</report>
