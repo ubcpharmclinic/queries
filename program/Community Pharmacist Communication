@@ -1,0 +1,39 @@
+<report title="Community Pharmacist Communication" description="Displays demographic ID, and pharmacy info (phone, fax, city, address) for community pharmacy communications between selected dates" active="1">
+
+<query> 
+        SELECT
+        SUBSTRING(m.dateObserved,1,10) AS "Date Communicated",
+        d.demographic_no AS "Demographic ID",
+        p.name AS "Pharmacy Name",
+        p.phone1 AS "Phone Number",
+        p.fax AS "Fax Number",
+        p.city AS "City",
+        p.address AS "Address"
+        
+        FROM
+        demographicPharmacy d
+
+        INNER JOIN
+        pharmacyInfo p
+        ON (p.recordID = d.pharmacyID)
+
+        INNER JOIN
+        measurements m
+        ON (d.demographic_no = m.demographicNo)
+
+        WHERE
+        m.type = 'COMO' AND m.dateObserved BETWEEN
+        IF ('{fromdate}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{fromdate}') 
+		AND IF ('{todate}' = '', (CURRENT_DATE), '{todate}')
+        
+    
+    ORDER by 
+    d.demographic_no
+    </query>
+    
+   <param id="fromdate" type="text" description="Dates from (YYYY-MM-DD, default: last 30 days)">
+   </param>
+   <param id="todate" type="text" description="Dates to (YYYY-MM-DD, default: today)">
+   </param>
+
+    </report>
