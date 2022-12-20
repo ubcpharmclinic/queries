@@ -1,0 +1,29 @@
+<report title="List of Patients enrolled by Date" description="Report on the number of patients- JD" active="1">
+	<query>
+		SELECT CONCAT(d.last_name,"\, ",d.first_name) AS "Patient",
+                       CONCAT(p.first_name," ", p.last_name) AS "Provider", 
+                       LEFT(a.status,'1'),
+                       z.description
+                       
+                       
+                FROM   appointment a, 
+                       demographic d, 
+                       provider p, 
+                       appointment_status z
+               WHERE  a.appointment_date BETWEEN "{date_from}" AND "{date_to}" AND
+                      a.demographic_no=d.demographic_no AND 
+                      a.provider_no = p.provider_no AND 
+                      d.last_name NOT LIKE "BOOKED" AND 
+                      d.last_name NOT LIKE "DO NOT BOOK" AND
+                      IF (LENGTH(a.status) = '2', z.status=Left(a.status, '1'),
+                         (a.status = z.status))
+
+                      LIMIT 1000;
+	</query>
+
+	<param id="date_from" type="date" description="Enter from date (YYYY-MM-DD)">
+	</param>
+
+<param id="date_to" type="date" description="Enter to date (YYYY-MM-DD)">
+	</param>
+</report>
