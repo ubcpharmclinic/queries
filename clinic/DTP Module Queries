@@ -1,0 +1,96 @@
+<report title="DTP Module Queries" description="Pulls data from the DTP module- v1.4 RN edit" active="1">
+
+<query>
+# DTP Module Query
+SELECT 
+    d.first_name AS 'First Name', 
+    d.last_name AS 'Last Name', 
+    d.demographic_no, 
+    dr.BN, 
+    dr.GN, 
+    dr.customName,
+    dtpi.name AS 'DTP',
+    dtpe.event AS 'Event',
+    dtpc.comment AS 'Comment',
+    dtppa.name AS 'Pharm Action',
+    dtpst.name AS 'DTP Status',
+    dtp.date_identified AS 'Date Identified',
+    dtp.date_response AS 'Follow Up Date',
+    CONCAT(prov.first_name, " ", prov.last_name) AS 'Clinician'
+       
+FROM 
+    demographic d
+    INNER JOIN DrugTherapyProblem dtp
+        ON (d.demographic_no = dtp.demographic_no)
+    LEFT JOIN lu_drugTherapyProblemIssue dtpi
+        ON (dtp.issue_id = dtpi.id)
+    LEFT JOIN drugTherapyProblemEvent dtpe
+        ON (dtp.event_id = dtpe.id)
+    LEFT JOIN drugs dr
+        ON (dtp.drug_id = dr.drugid)
+    LEFT JOIN drugTherapyProblemComment dtpc
+        ON (dtp.comment_id = dtpc.id)
+    INNER JOIN ctl_drugTherapyProblemPharmacistAction dtppac
+        ON (dtp.id = dtppac.dtp_id)
+    LEFT JOIN lu_drugTherapyProblemPharmacistAction dtppa
+        ON (dtppac.dtp_action_id = dtppa.id)
+    LEFT JOIN lu_drugTherapyProblemStatus dtpst
+        ON (dtp.status_id = dtpst.id)
+    INNER JOIN 
+        /*Subquery to join the most recent provider to the list of Dtps*/
+        (SELECT 
+            d.demographic_no,
+            a.appointment_date, 
+            p.first_name,
+            p.last_name
+        FROM 
+            demographic d
+            INNER JOIN appointment a
+                ON (d.demographic_no = a.demographic_no)
+            LEFT JOIN provider p 
+                ON (a.provider_no = p.provider_no)
+        WHERE 
+            a.appointment_date BETWEEN "{date_from}" AND "{date_to}"
+            AND d.last_name NOT LIKE 'BOOKED'
+            AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+        ) AS prov
+        ON (d.demographic_no = prov.demographic_no)
+        
+WHERE 
+    dtp.date_identified BETWEEN "{date_from}" AND "{date_to}"
+    AND d.last_name NOT LIKE 'BOOKED'
+    AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+    AND dtpi.id LIKE '{dtpType}'
+    AND dtpst.id LIKE '{dtpStatus}' #dtpStatus
+/*Display entries with unique DTP IDs AND Pharm Actions. DTP IDs can have multiple pharm actions (one drug having multiple 
+actions.) PTs can also ahve same pharm actions with different drugs*/
+GROUP BY 
+    dtp.id, dtppa.name
+
+LIMIT 5000; 
+</query>
+
+<param id="date_from" type="date" description="Appointments from: (YYYY-MM-DD)" />
+
+<param id="date_to" type="date" description="Appointments to: (YYYY-MM-DD)" />
+
+<param id="dtpType" type="list" description="DTP Type:">
+<param-query>
+(SELECT '%', '-All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemIssue);
+</param-query>
+</param>
+
+<param id="dtpStatus" type="list" description="Status:">
+<param-query>
+(SELECT '%', ' -All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemStatus);
+</param-query>
+</param>
+
+
+</report>
