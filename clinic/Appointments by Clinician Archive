@@ -1,0 +1,75 @@
+<report title="Appointments by Clinician Archive" description="Generating appointment report by clinician/status/type/initial/FU within a date range, use for appointment ranges prior to March 2021." active="1">
+
+<query>
+SELECT 
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient', 
+    a.appointment_date AS 'Appointment date',
+    s.description AS 'Appointment status',
+    td.name AS 'Appointment type old',
+    tn.name AS 'Appointment type new',
+    lrc.label AS 'Appointment reason',
+    CONCAT(p.first_name, " ", p.last_name) AS 'Clinician', 
+	lrs.label AS 'Referral Source'
+
+
+FROM 
+    demographic d
+	INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no) 
+    INNER JOIN provider p 
+		ON (a.provider_no = p.provider_no) 
+    LEFT JOIN appointmentType_archive td
+		ON (a.type = td.id)
+    LEFT JOIN appointmentType tn
+        ON (a.type = tn.id)
+    LEFT JOIN LookupListItem lrc 
+		ON (a.reasonCode = lrc.id)
+    LEFT JOIN LookupListItem lcl 
+        ON (a.locationCode = lcl.id)
+	LEFT JOIN LookupListItem lrs
+		ON (a.referralSourceCode = lrs.id),
+	(SELECT @totaltime:='00:00:00') c,
+        appointment_status s
+
+WHERE 
+    BINARY a.status LIKE '{aptstatus}%'
+        AND LEFT(a.status, '1') = LEFT(s.status, '1')
+        AND d.last_name NOT LIKE 'BOOKED'
+        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+        AND a.appointment_date BETWEEN 
+		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+			AND 
+		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
+    AND a.provider_no LIKE '{provider}' 
+
+ORDER BY a.appointment_date, d.demographic_no, a.status ASC; 
+</query>
+
+<param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days)" />
+
+<param id="apt_date_to" type="text" description="Appointments to (YYYY-MM-DD, default: today)" />
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', 'All clinicians')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+<param id="aptstatus" type="list" description="Appointment Status">
+<param-query>
+(SELECT status, description
+FROM appointment_status)
+UNION
+(SELECT '%', ' All statuses')
+ORDER BY status ASC;
+</param-query>
+</param>
+
+
+
+</report>
