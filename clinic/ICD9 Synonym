@@ -1,0 +1,11 @@
+<report title="ICD9 Synonym" description="A complete list from the current ICD9 synonym table" active="1">
+
+<query>
+SELECT icdsy.id, icdsy.patientFriendly, icdsy.dxCode, icd.description
+FROM Icd9Synonym icdsy
+LEFT JOIN icd9 icd
+ON (icd.icd9 LIKE icdsy.dxCode)
+ORDER BY patientFriendly;
+</query>
+
+</report>
