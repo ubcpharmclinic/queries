@@ -1,0 +1,92 @@
+<report title="Lung Health" description="Returns data recorded from Heart Health Clinics by date." active="1"><query>
+SELECT d.demographic_no AS 'Pt. ID',
+	#CONCAT(d.last_name, ", ", d.first_name) AS 'Patient (Last, First)',
+	d.sex AS 'Sex',
+	#CONCAT(d.year_of_birth, "-", d.month_of_birth, "-", d.date_of_birth) AS 'DOB (y-m-d)',
+	DATEDIFF(CURDATE(), CONCAT(d.year_of_birth, "-", d.month_of_birth, "-", d.date_of_birth))/365 AS 'Age',
+	a.appointment_date AS 'Appt. Day (y-m-d)',
+	CONCAT(pa.last_name, ", ", pa.first_name, " (", pa.specialty, ")" ) AS 'Appt. Pharmacist',	
+	a.`type`AS 'Appointment Type',
+	#	HT		Height
+	IFNULL(HT.dataField, '') AS 'HT',
+	#	WT		Weight
+	IFNULL(WT.dataField, '') AS 'WT',
+	#	BMI		Body Mass Index
+	IFNULL(BMI.dataField, '') AS 'BMI',
+	#	O2		Oxygen Saturation
+	IFNULL(O2.dataField, '') AS 'O2',
+	#	PEF	    	Peak Flow
+	IFNULL(PEF.dataField, '') AS 'PEF',
+	#	RESP	    	Respiration Rate
+	IFNULL(RESP.dataField, '') AS 'RESP'
+FROM demographic d
+JOIN appointment a
+	ON (a.demographic_no = d.demographic_no
+	AND DATE(a.appointment_date) BETWEEN '{apt_date_from}' AND '{apt_date_to}')
+#	HT	Height
+LEFT JOIN measurements HT
+		ON (HT.demographicNo = d.demographic_no
+		AND HT.type LIKE "%HT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(HT.dateObserved, '%Y-%m-%d') )
+#	WT		Weight
+LEFT JOIN measurements WT
+		ON (WT.demographicNo = d.demographic_no
+		AND WT.type LIKE "%WT%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(WT.dateObserved, '%Y-%m-%d') )
+#	BMI		Body Mass Index
+LEFT JOIN measurements BMI
+		ON (BMI.demographicNo = d.demographic_no
+		AND BMI.type LIKE "%BMI%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(BMI.dateObserved, '%Y-%m-%d') )
+#	02		Oxygen Saturation
+LEFT JOIN measurements O2
+		ON (O2.demographicNo = d.demographic_no
+		AND O2.type LIKE "%02%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(O2.dateObserved, '%Y-%m-%d') )		
+#	PEF	    	Peak Flow
+LEFT JOIN measurements PEF
+		ON (PEF.demographicNo = d.demographic_no
+		AND PEF.type LIKE "%PEF%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(PEF.dateObserved, '%Y-%m-%d') )
+#	RESP	    	Respiration Rate
+LEFT JOIN measurements RESP
+		ON (RESP.demographicNo = d.demographic_no
+		AND RESP.type LIKE "%RESP%"
+		AND date_format(a.appointment_date, '%Y-%m-%d') = date_format(PEF.dateObserved, '%Y-%m-%d') )
+JOIN provider pa
+	ON (pa.provider_no = a.provider_no) 
+WHERE a.provider_no LIKE '{provider}'
+	AND ( d.last_name NOT LIKE '%TEST%' AND d.last_name NOT LIKE '%BOOP%' )
+	AND d.patient_status LIKE "%ac%"
+	AND ( a.status NOT LIKE "%c%" AND a.status NOT LIKE "%n%" AND a.status NOT LIKE "%cs%" AND a.status NOT LIKE "%ns%" )
+	AND a.`type` LIKE '{aType}'
+GROUP BY  d.demographic_no, a.appointment_date HAVING COUNT(a.appointment_date) > -1
+ORDER BY a.appointment_date, d.demographic_no;
+</query>
+
+<param id="apt_date_from" type="date" description="From (Appt Date):" />
+<param id="apt_date_to" type="date" description="To (Appt Date):" />
+
+<param id="provider" type="list" description="Pharmacist (Choose Team A):">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, 
+CONCAT(pr.last_name, ', ', pr.first_name, ' (', pr.specialty, ')') 
+FROM provider pr 
+WHERE pr.provider_no IS NOT NULL 
+AND pr.provider_no != '' 
+AND pr.status = 1 
+ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+
+<param id="aType" type="list" description="Appointment Type (Select BOps or THF):">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT name, name
+FROM appointmentType 
+ORDER BY name ASC;
+</param-query>
+</param>
+
+</report>
