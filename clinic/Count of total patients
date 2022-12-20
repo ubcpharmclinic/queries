@@ -1,0 +1,16 @@
+<report title="Count of total patients" description="Used to count how many patients we have in total (active + inactive)." active="1">
+
+<query>
+SELECT 
+COUNT(d.demographic_no) AS 'Number'
+
+FROM demographic d
+
+WHERE 
+     d.last_name NOT LIKE 'BOOKED'
+        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+AND d.patient_status IN ('AC', 'DE')
+LIMIT 500; 
+</query>
+
+</report>
