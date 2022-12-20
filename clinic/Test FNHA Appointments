@@ -1,0 +1,220 @@
+<report title="Test FNHA Appointments" description="FNHA appointment report. Use with FNHA DTP and FNHA medication reports. - RN edit" active="1">
+
+<query>
+SELECT 
+	lrs.label AS 'Referral Source',
+    d.demographic_no AS 'Patient Number', 
+	FLOOR(DATEDIFF(CURRENT_DATE, STR_TO_DATE(CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth), '%Y-%m-%d'))/365.25) AS 'Age', 
+	d.sex AS 'Gender', 
+	DATE_FORMAT(a.appointment_date, '%m/%d/%Y') AS 'Appointment Date (mm/dd/yy)',
+    @duration:=ROUND(((FLOOR((TIME_TO_SEC((TIMEDIFF(a.end_time,a.start_time)))+450)/900)*900)/60.00), 2)  AS 'Appointment Length (Minutes)',
+	lrc.label AS 'Appointment Type (Initial/follow-up)', 
+    lsm.label AS 'Appointment Type (In-person/ telehealth)', 
+    lcl.label AS 'Location of Appointment (health centre/patient''s home/etc. or "n/a" if not in-person)', 
+    list.BNCustomList AS 'Medications', 
+    dtpcnt.cnt AS 'Unnecessary drug',
+    dtpcnt2.cnt2 AS 'Needs additional drug', 
+    dtpact1.act1 AS 'Start prescription', 
+    dtpact2.act2 AS 'Stop prescription'
+    
+
+FROM 
+	demographic d
+	INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no) 
+	LEFT JOIN appointmentType t
+		ON (a.type = t.id)
+    LEFT JOIN LookupListItem lrc 
+		ON (a.reasonCode = lrc.id) 
+	LEFT JOIN LookupListItem lrs
+		ON (d.referralSourceCode = lrs.id)
+    LEFT JOIN LookupListItem lsm 
+        ON (a.serviceMode = lsm.id)
+    LEFT JOIN LookupListItem lcl 
+        ON (a.locationCode = lcl.id)
+    LEFT JOIN 
+        /*Generate a table that returns: 1 row is 1 unique patient and a column with all their meds (concatted from BN + custom name). Join to the larger table 
+        such that for each row, there is 1 patient encounter and their entire med list in CSV*/
+        (SELECT 
+            cdr.demographic_no, 
+            GROUP_CONCAT(cdr.BNCustom SEPARATOR ', ') AS 'BNCustomList'
+        /*Generate table that returns a demographic number and a column with their med list such that the BN and custom names concated together*/
+        FROM (SELECT 
+                dr.demographic_no, 
+                /*Coalesce forces concat to return null values if any field contains null. If drug has BN, its custom name is null and vice versa. Want to capture all drugs, wehther
+                entered as custom name or as BN.*/
+                CONCAT (COALESCE (dr.BN, ''), COALESCE (dr.customName, '')) AS 'BNCustom'
+            FROM
+                drugs dr
+            WHERE 
+                dr.archived = 0
+            ORDER BY dr.demographic_no DESC
+            ) AS cdr
+        GROUP BY cdr.demographic_no 
+        ) AS list
+        ON (d.demographic_no = list.demographic_no)
+    
+    /*Generate a table that contains a demographic number and a column with the count of a specific type of DTP that they have. If patient 1234 has 3 "unnecessary drug" dtps, 
+    display 
+    Demo_no | Count of Unnecessary Drug DTPs
+    1234    |              3 
+    Then, join this to larger table
+    */
+    LEFT JOIN  
+        (SELECT demodtp.demographic_no, demodtp.name, COUNT(CASE demodtp.name WHEN 'Unnecessary drug' THEN 1 ELSE NULL END) AS cnt
+        FROM
+            /*Generates a table with demographic numbers and the types of dtps they have. For a single patient, shows multiple rows for multiple dtps. */
+            (SELECT 
+                d.demographic_no,  
+                dtpi.name
+            FROM 
+                demographic d
+                INNER JOIN appointment a 
+                    ON (d.demographic_no = a.demographic_no) 
+                LEFT JOIN LookupListItem lrs
+                    ON (d.referralSourceCode = lrs.id)
+                LEFT JOIN DrugTherapyProblem dtp 
+                    ON (d.demographic_no = dtp.demographic_no) 
+                LEFT JOIN lu_drugTherapyProblemIssue dtpi 
+                    ON (dtp.issue_id = dtpi.id)
+            WHERE 
+                d.last_name NOT LIKE 'BOOKED'
+                AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+                AND a.appointment_date BETWEEN 
+                IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+                    AND 
+                IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
+                AND a.status LIKE 'B%'
+                AND lrs.label LIKE 'FNHA%'
+            ) AS demodtp
+        /*Group by enhances Count functionality by grouping all of the same Dtp types together under the same patient and counting based on how many DTP types have been aggregated https://www.w3resource.com/sql/aggregate-functions/count-with-group-by.php 
+        With this group by criteria, rows with the same demographic number and dtp type are grouped and counted into 1 row. But since there is a COUNT criteria to only count 
+        rows that have a dtp type "unnecessary drug", rows that have other dtp types will not be counted and have a count of 0. */       
+        GROUP BY demodtp.demographic_no, demodtp.name
+        /*Having further enhances count functionality by returning only rows that meet the specified crtieria. If the DTP type is not unnecessary drug, then the count will be 0, then the row is removed from the table
+        If the dtp type is unnecessary drug, the count is >=1 and it is kept. Cant use alias "cnt" and have to retype the function because cnt isn't a variable and doesn't store a value? it just renames the column. */
+        HAVING COUNT(CASE demodtp.name WHEN 'Unnecessary drug' THEN 1 ELSE NULL END) != 0 
+        ) AS dtpcnt
+        ON (d.demographic_no = dtpcnt.demographic_no)
+    
+    /*Repeat count logic for pharm actions*/
+    LEFT JOIN  
+        (SELECT demodtp.demographic_no, demodtp.name, COUNT(CASE demodtp.name WHEN 'Needs additional drug' THEN 1 ELSE NULL END) AS cnt2
+        FROM
+            (SELECT 
+                d.demographic_no,  
+                dtpi.name
+            FROM 
+                demographic d
+                INNER JOIN appointment a 
+                    ON (d.demographic_no = a.demographic_no) 
+                LEFT JOIN LookupListItem lrs
+                    ON (d.referralSourceCode = lrs.id)
+                LEFT JOIN DrugTherapyProblem dtp 
+                    ON (d.demographic_no = dtp.demographic_no) 
+                LEFT JOIN lu_drugTherapyProblemIssue dtpi 
+                    ON (dtp.issue_id = dtpi.id)
+            WHERE 
+                d.last_name NOT LIKE 'BOOKED'
+                AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+                AND a.appointment_date BETWEEN 
+                IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+                    AND 
+                IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
+                AND a.status LIKE 'B%'
+                AND lrs.label LIKE 'FNHA%'
+            ) AS demodtp
+        GROUP BY demodtp.demographic_no, demodtp.name
+        HAVING COUNT(CASE demodtp.name WHEN 'Needs additional drug' THEN 1 ELSE NULL END) != 0 
+        ) AS dtpcnt2
+        ON (d.demographic_no = dtpcnt2.demographic_no)
+
+    LEFT JOIN 
+        (SELECT demoact.demographic_no, demoact.name, COUNT(CASE demoact.name WHEN 'Start prescription' THEN 1 ELSE NULL END) AS act1
+        FROM 
+            (SELECT 
+                d.demographic_no, 
+                dtppa.name
+            FROM 
+                demographic d 
+                INNER JOIN appointment a
+                    ON (d.demographic_no = a.demographic_no)
+                LEFT JOIN LookupListItem lrs
+                    ON (d.referralSourceCode = lrs.id)
+                LEFT JOIN DrugTherapyProblem dtp 
+                    ON (d.demographic_no = dtp.demographic_no)
+                LEFT JOIN ctl_drugTherapyProblemPharmacistAction dtppac
+                    ON (dtp.id = dtppac.dtp_id)
+                LEFT JOIN lu_drugTherapyProblemPharmacistAction dtppa
+                    ON (dtppac.dtp_action_id = dtppa.id)
+            WHERE 
+                d.last_name NOT LIKE 'BOOKED'
+                AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+                AND a.appointment_date BETWEEN 
+                IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+                    AND 
+                IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
+                AND a.status LIKE 'B%'
+                AND lrs.label LIKE 'FNHA%'
+            ) AS demoact
+        GROUP BY demoact.demographic_no, demoact.name
+        HAVING COUNT(CASE demoact.name WHEN 'Start prescription' THEN 1 ELSE NULL END)  != 0 
+        ) AS dtpact1
+        ON (d.demographic_no = dtpact1.demographic_no)
+
+        LEFT JOIN 
+        (SELECT demoact.demographic_no, demoact.name, COUNT(CASE demoact.name WHEN 'Stop prescription' THEN 1 ELSE NULL END) AS act2
+        FROM 
+            (SELECT 
+                d.demographic_no, 
+                dtppa.name
+            FROM 
+                demographic d 
+                INNER JOIN appointment a
+                    ON (d.demographic_no = a.demographic_no)
+                LEFT JOIN LookupListItem lrs
+                    ON (d.referralSourceCode = lrs.id)
+                LEFT JOIN DrugTherapyProblem dtp 
+                    ON (d.demographic_no = dtp.demographic_no)
+                LEFT JOIN ctl_drugTherapyProblemPharmacistAction dtppac
+                    ON (dtp.id = dtppac.dtp_id)
+                LEFT JOIN lu_drugTherapyProblemPharmacistAction dtppa
+                    ON (dtppac.dtp_action_id = dtppa.id)
+            WHERE 
+                d.last_name NOT LIKE 'BOOKED'
+                AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+                AND a.appointment_date BETWEEN 
+                IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+                    AND 
+                IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
+                AND a.status LIKE 'B%'
+                AND lrs.label LIKE 'FNHA%'
+            ) AS demoact
+        GROUP BY demoact.demographic_no, demoact.name
+        HAVING COUNT(CASE demoact.name WHEN 'Stop prescription' THEN 1 ELSE NULL END) != 0 
+        ) AS dtpact2
+        ON (d.demographic_no = dtpact2.demographic_no)
+WHERE 
+	d.last_name NOT LIKE 'BOOKED'
+    AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+    AND a.appointment_date BETWEEN 
+    IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+        AND 
+    IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
+    AND a.status LIKE 'B%'
+    AND lrs.label LIKE 'FNHA%'
+     /*Date function converts date_updated type to date to allow proper comparison*/
+    /*AND dtp.date_entered BETWEEN '{apt_date_from}' AND '{apt_date_to}'*/
+
+    
+LIMIT 500; 
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from (YYYY-MM-DD, default: last 30 days)">
+</param>
+
+<param id="apt_date_to" type="date" description="Appointments to (YYYY-MM-DD, default: today)">
+</param>
+
+
+</report>
