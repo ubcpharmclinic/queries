@@ -1,0 +1,116 @@
+<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v2.1 RN/JD edit" active="1">
+
+<query>
+SELECT 
+	d.demographic_no AS 'Id', 
+    d.hin AS 'PHN',
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient', 
+	CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth', 
+	FLOOR(DATEDIFF(CURRENT_DATE, STR_TO_DATE(CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth), '%Y-%m-%d'))/365.25) AS 'Age', 
+	d.sex AS 'Sex', 
+	d.phone AS 'Phone number', 
+	a.appointment_date AS 'Appointment date',
+    lcl.label AS 'Appointment location',
+        s.description AS 'Appointment status',
+	t.name AS 'Appointment type', 
+	lrc.label AS 'Reason code', 
+	a.notes AS 'Notes', 
+	a.start_time AS 'Start time', 
+	a.end_time AS 'End time', 
+	@duration:=(TIME_FORMAT(SEC_TO_TIME(FLOOR((TIME_TO_SEC((TIMEDIFF(a.end_time,a.start_time)))+450)/900)*900),'%H:%i')) AS 'Duration',
+	(TIME_FORMAT(@totaltime:=(ADDTIME(@duration,@totaltime)),'%H:%i')) AS 'Total', 
+	CONCAT(p.first_name, " ", p.last_name) AS 'Clinician', 
+	a.creator AS 'Appointment creator', 
+	lrs.label AS 'Referral Source'
+	
+FROM 
+	demographic d
+	INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no) 
+	INNER JOIN appointmentType t
+		ON (a.type = t.id)
+	INNER JOIN provider p 
+		ON (a.provider_no = p.provider_no) 
+	INNER JOIN LookupListItem lrc 
+		ON (a.reasonCode = lrc.id) 
+    LEFT JOIN LookupListItem lcl 
+        ON (a.locationCode = lcl.id)
+	LEFT JOIN LookupListItem lrs
+		ON (a.referralSourceCode = lrs.id),
+	(SELECT @totaltime:='00:00:00') c,
+        appointment_status s
+WHERE 
+	BINARY a.status LIKE '{aptstatus}%'
+        AND LEFT(a.status, '1') = LEFT(s.status, '1')
+        AND d.last_name NOT LIKE 'BOOKED'
+        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+        AND a.appointment_date BETWEEN 
+		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+			AND 
+		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
+	AND a.provider_no LIKE '{provider}' 
+	AND t.id LIKE '{apt_type}'
+	AND lrc.id LIKE '{aptreason}'
+	AND a.creator LIKE '{aptcreator}'
+
+ORDER BY a.appointment_date, d.demographic_no, a.status ASC; 
+</query>
+
+<param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days)" />
+
+<param id="apt_date_to" type="text" description="Appointments to (YYYY-MM-DD, default: today)" />
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', 'All clinicians')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+<param id="aptstatus" type="list" description="Appointment Status">
+<param-query>
+(SELECT status, description
+FROM appointment_status)
+UNION
+(SELECT '%', ' All statuses')
+ORDER BY status ASC;
+</param-query>
+</param>
+
+<param id="apt_type" type="list" description="Appointment Type">
+<param-query>
+(SELECT t.id, t.name FROM appointmentType t)
+UNION
+(SELECT '%', ' All types')
+ORDER BY name ASC;
+</param-query>
+</param>
+
+<param id="aptreason" type="list" description="Appointment Reason">
+<param-query>
+(SELECT lli.id, lli.label
+FROM LookupListItem lli
+WHERE lli.id IN (113, 116, 117))
+UNION
+(SELECT '%', 'All reasons')
+ORDER BY label ASC;
+</param-query>
+</param>
+
+<param id="aptcreator" type="list" description="Appointment Creator">
+<param-query>
+(SELECT CONCAT(p.last_name, ", ", p.first_name) AS provider_name, CONCAT(p.last_name, ", ", p.first_name) AS provider_list
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', 'All creators')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+
+</report>
