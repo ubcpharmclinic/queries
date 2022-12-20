@@ -1,0 +1,66 @@
+<report title="Appointment Counter TEST" description="Reports total number of patient appointments  between the specified dates by clinician. Displays demographic number, patient name, clinician name, and number of appointments. Sorted by appointment count descendingNov9." active="1">
+
+<query>
+
+SELECT 
+	d.demographic_no AS 'Demographic number',
+	CONCAT(p.first_name, " ", p.last_name) AS 'Clinician', 
+    lcl.label AS 'Appointment location',
+	COUNT(a.demographic_no) AS 'NUM_OF_APPT',
+	a.appointment_date AS 'Appointment date'
+
+FROM 
+	demographic d
+	INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no)
+    INNER JOIN provider p
+	   ON (a.provider_no = p.provider_no)
+    LEFT JOIN LookupListItem lcl 
+        ON (a.locationCode = lcl.id),
+    appointment_status s
+WHERE 
+	BINARY a.status LIKE '{aptstatus}%'
+        AND LEFT(a.status, '1') = LEFT(s.status, '1')
+	AND a.provider_no LIKE '{provider}' 
+	AND a.demographic_no <> '0'
+    AND d.last_name NOT LIKE 'BOOKED'
+    AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+    AND a.appointment_date BETWEEN 
+		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+			AND 
+		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
+
+ORDER BY a.appointment_date, d.demographic_no, a.status ASC; 
+</query>
+
+
+<param id="min_appt_num" type="text" description="Min. # of Appts. (e.g. 0):">
+</param>
+                
+<param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days)" />
+
+<param id="apt_date_to" type="text" description="Appointments to (YYYY-MM-DD, default: today)" />
+
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', 'All clinicians')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+<param id="aptstatus" type="list" description="Appointment Status">
+<param-query>
+(SELECT status, description
+FROM appointment_status)
+UNION
+(SELECT '%', ' All statuses')
+ORDER BY status ASC;
+</param-query>
+</param>
+
+</report>
