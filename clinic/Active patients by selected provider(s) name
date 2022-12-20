@@ -1,0 +1,110 @@
+<report title="Active patients by selected provider(s) name" description="Find active patients by selected provider and/or specialist name, type or location.">
+
+<query>
+
+# Outermost Select 
+SELECT DISTINCT
+	d.demographic_no AS 'DemoId', 
+	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient', 
+	CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth',
+        d.phone AS "Patient Phone", 
+	FLOOR(DATEDIFF(CURRENT_DATE, STR_TO_DATE(CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth), '%Y-%m-%d'))/365.25) AS 'Age', 
+	d.sex AS 'Sex',
+	CONCAT(dcp.last_name, ", ", dcp.first_name) AS 'Pharmacist',
+	dcp.specialty AS 'Role',
+	dcp.phone AS 'Provider Phone',
+	CONCAT(dcps.lName, ", ", dcps.fName) AS 'Professional Specialist',
+	dcps.specType AS 'Specialty',
+	dcps.phone AS 'Specialist Phone',
+	dcps.address AS 'Address'
+
+# Should be @Results
+FROM 
+	(SELECT 
+		dc.demographicNo AS 'dNo', 
+		dc.contactId,
+		dc.type AS 'typeP',
+		dc.created,
+		dc.updateDate,
+		dc.active,
+		p.provider_no,
+		p.first_name,
+		p.last_name,
+		p.specialty,
+		p.phone,
+		(p.provider_no LIKE '{internal}') AS 'providerMatch'
+
+	FROM DemographicContact dc 
+		INNER JOIN provider p 
+			ON p.provider_no = dc.contactId AND dc.type = 0
+	WHERE p.provider_no IS NOT NULL AND
+		((dc.created BETWEEN '{date_from}' AND '{date_to}')
+		OR
+		(dc.created < '{date_from}' AND dc.active = 1)
+		OR
+		(dc.created < '{date_from}' AND dc.active = 0 AND dc.updateDate > '{date_from}'))
+	) dcp
+INNER JOIN 
+	(SELECT 
+		dc.demographicNo AS 'dNo', 
+		dc.contactId,
+		dc.type AS 'typePS',
+		dc.created,
+		dc.updateDate,
+		dc.active,
+		ps.specId,
+		ps.fName,
+		ps.lName,
+		ps.specType,
+		ps.address,
+		ps.phone
+	FROM DemographicContact dc
+		INNER JOIN professionalSpecialists ps 
+		ON ps.specId = dc.contactId AND dc.type = 3 
+	WHERE ps.specId IS NOT NULL AND 
+		((dc.created BETWEEN '{date_from}' AND '{date_to}')
+		OR
+		(dc.created < '{date_from}' AND dc.active = 1)
+		OR
+		(dc.created < '{date_from}' AND dc.active = 0 AND dc.updateDate > '{date_from}'))
+	) dcps
+ON dcp.dNo = dcps.dNo
+INNER JOIN demographic d ON dcp.dNo = d.demographic_no
+
+WHERE 
+dcp.providerMatch = 1
+AND dcps.specType LIKE '%{psType}%'
+AND CONCAT(dcps.lName, ", ", dcps.fName) LIKE '%{psName}%'
+AND dcps.address LIKE '%{psLocation}%'
+
+
+ORDER BY d.last_name ASC 
+</query>
+
+
+# Params from here on in
+<param id="date_from" type="date" description="Relationship Date From:" />
+
+<param id="date_to" type="date" description="Relationship Date To: " /> 
+<param id="internal" type="list" description="Pharmacist:">
+	<param-query>
+	(SELECT '%', '-Any-')
+	UNION
+	(SELECT p. provider_no, CONCAT(p.last_name, ', ', p.first_name)
+	FROM provider p
+	WHERE p.provider_no IS NOT NULL
+	AND p.provider_no <> ''
+	AND p.status = 1
+	AND p.specialty LIKE '%phar%'
+	ORDER BY p.last_name ASC
+	);
+</param-query>
+</param>
+<param id="psName" type="text" description="Search By Specialist Name (Last Name, First Name): ">
+</param>
+<param id="psType" type="text" description="Specialist Type (Leave Blank For Any Type): ">
+</param>
+<param id="psLocation" type="text" description="Specialist Location (Leave Blank For Any Location): "> 
+</param> 
+
+</report>
