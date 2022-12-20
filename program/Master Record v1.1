@@ -1,0 +1,48 @@
+<report title="Master Record v1.1" description="Identifiable demographic info; created June 15 2022" active="1">
+
+<query>
+SELECT * FROM (
+	SELECT d.demographic_no AS 'Patient ID', 
+		CONCAT(d.last_name, ',', d.first_name) AS 'Patient', 
+		CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth', 
+        FLOOR(DATEDIFF(CURRENT_DATE, STR_TO_DATE(CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth), '%Y-%m-%d'))/365.25) AS 'Age', 
+		d.sex AS 'Sex', 		
+        d.postal AS 'Postal code',	
+        d.patient_status AS 'Patient status', 
+        d.date_joined AS 'Date joined',
+        CONCAT(p.first_name, " ", p.last_name) AS 'Last Updated User',
+        d.lastUpdateDate AS 'Last Updated Date',
+        a.appointment_date AS 'Appointment date',
+        s.description AS 'Appointment Status',
+        t.content AS 'Master Note'
+	FROM demographic d
+    INNER JOIN demographiccust t 
+		ON (d.demographic_no = t.demographic_no)
+    INNER JOIN provider p
+		ON (d.lastUpdateUser = p.provider_no) 
+	LEFT JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no)
+    LEFT JOIN appointment_status s #select the status on both table to be the same
+        ON (s.status = a.status)
+    WHERE d.patient_status LIKE '{patient_status}'
+) resultset
+WHERE `Date joined` BETWEEN '{birth_date_from}' AND '{birth_date_to}'
+
+ORDER BY `Date joined` ASC;
+</query>
+
+<param id="birth_date_from" type="date" description="From (Date joined)" />
+<param id="birth_date_to" type="date" description="To (Date joined)" />
+
+<param id="patient_status" type="list" description="Patient Status">
+<param-query>
+(SELECT DISTINCT d.patient_status AS 'patient_status_id', d.patient_status AS 'patient_status_list' FROM demographic d)
+UNION
+(SELECT '%', ' All statuses')
+ORDER BY patient_status_list ASC;
+</param-query>
+</param>
+
+
+
+</report>
