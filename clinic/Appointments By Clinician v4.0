@@ -1,0 +1,137 @@
+<report title="Appointments By Clinician v4.0" description="New Appointments By Clinician v4.0 Aug 31,2022 able to look back at before and after the update in 2020" active="1">
+
+<query>
+SELECT 
+    d.demographic_no AS 'Patient ID',
+    CONCAT(d.last_name, ',', d.first_name) AS 'Patient',
+    CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth', 
+    d.sex AS 'Sex', 
+    d.email AS 'Email',
+    d.date_joined AS 'Date joined',
+    d.lastUpdateDate AS 'Last Updated Date',
+    a.appointment_date AS 'Appointment date',
+    s.description AS 'Appointment status',
+    typ.name AS 'Appointment type',
+    lrc.label AS 'Reason',
+    lcl.label AS 'Appointment location',
+    lrs.label AS 'Referral Source',
+    /*Patient charts has multiple alert sections, including alerts and notes. Should we be including
+    alerts as well? */
+    t.content AS 'Master Note',
+	  a.creator AS 'Appointment creator',
+    CONCAT(p.first_name, " ", p.last_name) AS 'Clinician' 
+
+FROM
+    demographic d 
+    INNER JOIN appointment a 
+		ON (d.demographic_no = a.demographic_no)
+    INNER JOIN provider p 
+		ON (a.provider_no = p.provider_no) 
+    /*Returns a table with both archived and current appoitnment type id numbers and names.
+     Joining this table with appointments to aggregate archived and current type data*/
+    LEFT JOIN (SELECT t.id, t.name FROM appointmentType t 
+              UNION 
+              SELECT ta.id, ta.name FROM appointmentType_archive ta) typ
+    ON (a.type = typ.id)
+    LEFT JOIN demographiccust t 
+		ON (d.demographic_no = t.demographic_no)
+    LEFT JOIN LookupListItem lrc 
+		ON (a.reasonCode = lrc.id) 
+    LEFT JOIN LookupListItem lcl 
+    ON (a.locationCode = lcl.id)
+    LEFT JOIN LookupListItem lrs
+		ON (a.referralSourceCode = lrs.id)
+    /*Joining table based on the first character in status column. Appointments that were 
+    edited since it was created have an additional "S". E.g. B --> BS*/
+    LEFT JOIN appointment_status s
+    ON (LEFT (a.status, '1') = LEFT (s.status, '1'))
+WHERE 
+    a.status LIKE '{apt_status}%'
+    AND LEFT(a.status, '1') = LEFT(s.status, '1')
+    AND d.last_name NOT LIKE 'BOOKED'
+    AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+    AND a.appointment_date BETWEEN 
+        IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+            AND 
+        IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')  
+    AND a.provider_no LIKE '{provider}' 
+    /*When "All Types"/% wildcard selected, include entries with all types, including those with null values
+    When a specific type is selected, include entries that match the type selected, omitting null values*/
+    AND (CASE WHEN '{apt_type}' LIKE '!%' ESCAPE '!' 
+        THEN (typ.id LIKE '{apt_type}' OR typ.id IS NULL) 
+        ELSE (typ.id LIKE '{apt_type}' AND typ.id IS NOT NULL) 
+      END)
+    /*When "All reasons"/% wildcard selected, include entries with all types, including null values.
+    When a specific reason is selected, remove all blank spaces from the reason label, then match the reason selected
+    to entries in the results table, omitting null entries.*/
+    AND (CASE WHEN '{apt_reason}' LIKE '!%' ESCAPE '!' 
+        THEN (lrc.id LIKE '%' OR lrc.id IS NULL) 
+        ELSE (REPLACE (lrc.label, ' ', '') LIKE (SELECT REPLACE (rc.label, ' ', '') FROM LookupListItem rc WHERE rc.id LIKE '{apt_reason}'))
+      END)
+    AND a.creator LIKE '{apt_creator}'
+ORDER BY a.appointment_date ASC;
+</query>
+
+<param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days) ">
+</param>
+
+<param id="apt_date_to" type="text" description="Appointments to (YYYY-MM-DD, default: today)">
+</param>
+
+<param id="provider" type="list" description="Clinician">
+<param-query>
+(SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+FROM provider p
+WHERE p.status = 1 AND p.specialty LIKE 'Clinical Pharmacist') /*Clinicians displayed must have clinical pharmacist specialty setup in their OSCAR account*/
+UNION
+(SELECT '%', '-All clinicians-') /*Hyphens to pin All Clinicians to the top*/
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+<param id="apt_status" type="list" description="Appointment Status">
+<param-query>
+(SELECT status, description
+FROM appointment_status)
+UNION
+(SELECT '%', '-All statuses-')
+ORDER BY status ASC;
+</param-query>
+</param>
+
+<param id="apt_type" type="list" description="Appointment Type"> 
+<param-query>
+(SELECT t.id, t.name FROM appointmentType t)
+UNION
+(SELECT ta.id, ta.name FROM appointmentType_archive ta)
+UNION
+(SELECT '%', '-All types-')
+ORDER BY name ASC;
+</param-query>
+</param>
+
+<param id="apt_reason" type="list" description="Appointment Reason"> 
+<param-query>
+(SELECT lli.id, lli.label
+FROM LookupListItem lli
+/*113 = Initial Consultation, 116 = Follow-up, 117 = Others; 
+Archived reason codes 1 = InitialConsultation, 4 = Follow-up, 17 = Others*/
+WHERE lli.id IN (113, 116, 117)) 
+UNION
+(SELECT '%', '-All reasons-')
+ORDER BY label ASC;
+</param-query>
+</param>
+
+<param id="apt_creator" type="list" description="Appointment Creator">
+<param-query>
+(SELECT CONCAT(p.last_name, ", ", p.first_name) AS provider_name, CONCAT(p.last_name, ", ", p.first_name) AS provider_list
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', '-All creators-')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+</report>
