@@ -1,0 +1,22 @@
+<report title="CAMMPUS" description="All patients enrolled in the CAMMPUS program" active="1"><query>
+(SELECT "Total Enrolled" AS "ID", 
+COUNT(demographic_no) AS "Patient Name",
+"" AS "Date Joined (m-d-y)",
+" " AS "Chart ID"
+FROM demographic 
+WHERE chart_no > ""
+AND patient_status = "AC"
+AND last_name NOT LIKE "test" AND last_name NOT LIKE "boop")
+UNION
+(SELECT 
+d.demographic_no,
+CONCAT( d.last_name, ", ", d.first_name ),
+DATE_FORMAT(d.date_joined, "%m-%d-%Y"),
+d.chart_no
+FROM demographic d 
+WHERE d.chart_no > ""
+AND d.patient_status = "AC"
+AND d.last_name NOT LIKE "test" AND d.last_name NOT LIKE "boop" 
+ORDER BY d.last_name);
+</query>
+</report>
