@@ -1,0 +1,48 @@
+<report title="PT by Age: Based on Billing" description="Search for patients by billing date and by age range. Displays patient name, billing date, and age. Sorted alphabetically by last name." active="1">
+
+<query>
+SELECT
+	last_name,
+	first_name,
+	service_date,
+	year_of_birth,
+	month_of_birth,
+	date_of_birth, 
+	(YEAR(CURRENT_DATE)-YEAR(DATE_FORMAT(CONCAT((demographic.year_of_birth),'-',	
+	(demographic.month_of_birth),'-',(demographic.date_of_birth)),'%Y-%m-%d')))-
+	(RIGHT(CURRENT_DATE,
+	5)<RIGHT(DATE_FORMAT(CONCAT((demographic.year_of_birth),'-',
+	(demographic.month_of_birth),'-',(demographic.date_of_birth)),'%Y-%m-%d'),5))"Age"
+FROM 
+	billingmaster, 
+	demographic  
+WHERE 
+	billingmaster.demographic_no = demographic.demographic_no 
+	AND billingmaster.service_date >='{start}'
+	AND billingmaster.service_date<='{finish}' 
+	AND  (YEAR(CURRENT_DATE)-
+	YEAR(DATE_FORMAT(CONCAT((demographic.year_of_birth),'-',
+	(demographic.month_of_birth),'-',(demographic.date_of_birth)),'%Y-%m-%d')))-
+	(RIGHT(CURRENT_DATE,
+	5)<RIGHT(DATE_FORMAT(CONCAT((demographic.year_of_birth),'-',
+	(demographic.month_of_birth),'-',(demographic.date_of_birth)),'%Y-%m-%d'),5)) >= '{age1}' 
+	AND (YEAR(CURRENT_DATE)-
+	YEAR(DATE_FORMAT(CONCAT((demographic.year_of_birth),'-',
+	(demographic.month_of_birth),'-',(demographic.date_of_birth)),'%Y-%m-%d')))-
+	(RIGHT(CURRENT_DATE,
+	5)<RIGHT(DATE_FORMAT(CONCAT((demographic.year_of_birth),'-',
+	(demographic.month_of_birth),'-',(demographic.date_of_birth)),'%Y-%m-%d'),5)) <= 
+	'{age2}' 
+GROUP BY
+	last_name 
+ORDER BY 
+	sex,
+	service_date, 
+	last_name;
+</query>
+
+<param id="start" type="text" description="Billings from:"> </param>
+<param id="finish" type="text" description="Billings to:"> </param>
+<param id="age1" type="text" description="Ages from:"> </param>
+<param id="age2" type="text" description="Ages to:"> </param>
+</report>
