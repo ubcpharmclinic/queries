@@ -1,4 +1,4 @@
-<report title="Appointments by clinician v2.0" description="Generating appointment report by clinician/status/type within a date range- v1.4 RN/JD edit" active="1">
+<report title="Appointments by clinician v2.0" description="Generating appointment report by clinician/status/type within a date range- v1.3 JD edit" active="1">
 
 <query>
 SELECT 
@@ -33,7 +33,7 @@ WHERE
 	BINARY a.status LIKE '{aptstatus}%'
         AND LEFT(a.status, '1') = LEFT(s.status, '1')
         AND d.last_name NOT LIKE 'BOOKED'
-        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
+        AND d.last_name NOT LIKE 'DO NOT BOOK'
         AND a.appointment_date BETWEEN 
 		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
 			AND 
@@ -45,8 +45,7 @@ WHERE
 HAVING `Date of birth` BETWEEN
 		IF ('{birth_date_from}' = '', (CURRENT_DATE - INTERVAL 110 YEAR), '{birth_date_from}') 
 			AND 
-		IF ('{birth_date_to}' = '', (CURRENT_DATE), '{birth_date_to}')
-ORDER BY a.appointment_date, d.demographic_no, a.status ASC; 
+		IF ('{birth_date_to}' = '', (CURRENT_DATE), '{birth_date_to}');
 </query>
 
 <param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days)" />
