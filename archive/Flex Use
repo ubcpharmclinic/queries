@@ -1,0 +1,166 @@
+<report title="Flex Use" description="NOT FOR GENERAL USE - For temporarily-used templates; may be broken - RN and LC use" active="1">
+<query>
+
+SELECT DISTINCT
+	dd.demographic_no, 
+	dd.patient, 
+	dd.dob, 
+	dd.age,
+	dd.sex, 
+	pd.provider_no, 	
+	pd.pharmacist, 
+	psd.external_provider, 
+	psd.external_phone,
+	psd.address, 
+	cd.professional_contact, 
+	cd.workPhone AS professional_phone, 
+	cd.professional_address
+	
+FROM 
+	(SELECT 
+		d.demographic_no, 
+		CONCAT (d.last_name, ", ", d.first_name) AS patient, 
+		CONCAT (d.year_of_birth, "-", d.month_of_birth, "-", date_of_birth) AS dob,
+			FLOOR(DATEDIFF(CURRENT_DATE, STR_TO_DATE(CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth), '%Y-%m-%d'))/365.25) AS age,
+		d.sex, 
+		dc.contactId, 
+		dc.role, 
+		a.appointment_date
+	FROM 
+		demographic d
+	INNER JOIN 
+		DemographicContact dc 
+	ON 	(d.demographic_no = dc.demographicNo)
+	LEFT JOIN 
+		appointment a
+	ON (d.demographic_no = a.demographic_no)
+	WHERE 
+		d.patient_status LIKE "AC"
+		AND dc.active = 1
+		AND dc.deleted = 0
+		AND d.last_name NOT IN ("test", "tests", "booked", "boop")
+	ORDER BY d.last_name ASC) AS dd
+LEFT JOIN 
+	(SELECT 
+		d.demographic_no,
+		p.provider_no, 
+		CONCAT (p.last_name, ", ", p.first_name) AS pharmacist
+	FROM DemographicContact dc 
+	LEFT JOIN provider p
+		ON (dc.contactId = p.provider_no AND dc.type = 0) 
+	INNER JOIN demographic d 
+		ON (dc.demographicNo = d.demographic_no)
+	WHERE 
+		d.patient_status LIKE "AC"
+		AND dc.type = 0
+		AND dc.active = 1
+		AND dc.deleted = 0
+		AND d.last_name NOT IN ("test", "tests", "booked", "boop")
+	ORDER BY d.last_name ASC) as pd
+ON (dd.demographic_no = pd.demographic_no)
+LEFT JOIN 
+	(SELECT 
+		d.demographic_no,
+		CONCAT (ps.lname, ", ", ps.fname) AS external_provider,
+		ps.specType, 
+		ps.phone AS external_phone,
+		ps.address
+	FROM DemographicContact dc 
+	LEFT JOIN professionalSpecialists ps
+		ON (dc.contactId = ps.specId AND dc.type = 3)
+	INNER JOIN demographic d
+		ON (dc.demographicNo = d.demographic_no)
+	WHERE 
+		d.patient_status LIKE "AC"
+		AND dc.type = 3
+		AND dc.active = 1 
+		AND dc.deleted = 0 
+		AND d.last_name NOT IN ("test", "tests", "booked", "boop")
+	ORDER BY d.last_name ASC) AS psd
+ON (dd.demographic_no = psd.demographic_no)
+LEFT JOIN  
+	(SELECT 
+		d.demographic_no,
+		CONCAT (c.lastname, ", ", c.firstname) as professional_contact, 
+		c.workPhone, 
+		CONCAT (c.address, ", ", c.city, ", ", c.province) AS professional_address
+	FROM DemographicContact dc
+	LEFT JOIN Contact c  
+		ON (dc.contactId = c.id AND dc.type = 2)
+	INNER JOIN demographic d
+		ON (dc.demographicNo = d.demographic_no)
+	WHERE
+		d.patient_status LIKE "AC"
+		AND dc.type = 2
+		AND dc.active = 1
+		AND dc.deleted = 0
+		AND c.deleted = 0
+		AND d.last_name NOT IN ("test", "tests", "booked", "boop")
+	ORDER BY d.last_name ASC) AS cd
+ON (dd.demographic_no = cd.demographic_no)
+LEFT JOIN 
+	(SELECT 
+		d.demographic_no, 
+		ph.name AS pharmacy, 
+		ph.phone1
+	FROM DemographicContact dc
+	LEFT JOIN pharmacyInfo ph
+		ON (dc.contactId = ph.ID AND dc.type = 4)
+	INNER JOIN demographic d 
+		ON (dc.demographicNo = d.demographic_no)
+	WHERE 
+		d.patient_status LIKE "AC"
+		AND dc.type = 4
+		AND dc.active = 1
+		AND dc.deleted = 0 
+		AND ph.status = 1
+		AND d.last_name NOT IN ("test", "tests", "booked", "boop")
+	ORDER BY d.last_name ASC LIMIT 300) AS phd
+ON (dd.demographic_no = phd.demographic_no)
+
+WHERE 
+	pd.provider_no = '{pharm}'
+        AND (psd.external_provider LIKE '%{psName}%'OR psd.external_provider IS NULL)
+AND dd.role LIKE '{psType}'
+	AND dd.appointment_date BETWEEN 
+		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
+			AND 
+		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
+
+
+;
+	
+
+</query>
+
+<param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days) " />
+
+<param id="apt_date_to" type="text" description="Appointments to (YYYY-MM-DD, default: today)" />
+
+<param id="pharm" type="list" description="Pharmacist: ">
+<param-query>
+	SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
+	FROM provider p
+	WHERE 
+		p.provider_type != 'admin'
+       		AND p.status = 1
+		AND p.specialty LIKE '%phar%'
+	ORDER BY provider_name ASC;
+</param-query>
+</param>
+
+<param id="psName" type="text" description="Search by external provider (last name, first name): ">
+</param>
+
+<param id="psType" type="list" description="External provider type:">
+<param-query>
+(SELECT cs.id, cs.specialty
+FROM ContactSpecialty cs) 
+UNION
+(SELECT '%', '-All Specialists-') 
+ORDER BY specialty ASC;
+</param-query>
+</param>
+
+
+</report>
