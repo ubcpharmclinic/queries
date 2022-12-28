@@ -1,0 +1,37 @@
+<report title="PT by Drug and Provider" description="Search for patients by a given medication and provider. Displays patient name, age, and drug. Sorted alphabetically by last name." active="1">
+
+<query>
+SELECT
+	de.last_name AS "Last name",
+	de.first_name AS "First name",
+	de.phone AS "Phone", 
+	(Year(CURDATE())-de.year_of_birth) AS "Age", 
+	dr.BN AS "Drug", 
+	dr.GN AS "Trade"
+FROM
+	drugs dr
+INNER JOIN 
+	demographic de
+	ON (dr.demographic_no = de.demographic_no)
+WHERE 
+        dr.provider_no = '{provider_no}' 
+        AND (dr.BN LIKE CONCAT ('{bn}','%') 
+	OR dr.GN LIKE CONCAT ('{bn}','%'))
+ORDER BY 
+        de.last_name;
+</query>
+
+<param id="bn" type="text" description="Drug keyword (e.g. Ibuprofen):"> 
+</param>
+<param id="provider_no" type="list" description="Provider:">
+<param-query> 
+SELECT pr.provider_no, 
+CONCAT(pr.last_name, ', ', pr.first_name, ' (', pr.specialty, ')') 
+FROM provider pr 
+WHERE pr.provider_no IS NOT NULL 
+AND pr.provider_no != '' 
+AND pr.status = 1 
+ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+</report>
