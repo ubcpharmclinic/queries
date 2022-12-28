@@ -1,0 +1,28 @@
+<report title="Appointments by Date" description="Search for appointments by date and pharmacist, with referral doctor listing. Displays appointment date, patient name and contact, and doctor." active="1">
+<query>
+SELECT 
+	ap.appointment_date,
+	ap.name,
+	ap.reason,
+	de.family_doctor, 
+	de.year_of_birth,
+	de.month_of_birth, 
+	de.date_of_birth, 
+	de.phone, 
+	de.phone2 
+FROM 
+	appointment ap, 
+	demographic de 
+WHERE 
+	ap.demographic_no = de.demographic_no 
+	AND ap.appointment_date = '{appointment_date}' 
+	AND ap.provider_no = '{provider_no}'
+
+</query>
+<param id="appointment_date" type="text" description="Date (e.g. yyyymmdd):">
+   </param>
+
+<param id="provider_no" type="text" description="Provider number from OSCAR ADMIN provider record (e.g. 1004):">
+   </param>
+
+</report>
