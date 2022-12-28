@@ -1,4 +1,4 @@
-<report title="Appointments by clinician v2.0" description="Generating appointment report by clinician/status/type within a date range- v1.3 JD edit" active="1">
+<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v1.6 RN/JD edit" active="1">
 
 <query>
 SELECT 
@@ -7,22 +7,24 @@ SELECT
 	CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth', 
 	FLOOR(DATEDIFF(CURRENT_DATE, STR_TO_DATE(CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth), '%Y-%m-%d'))/365.25) AS 'Age', 
 	d.sex AS 'Sex', 
-	d.patient_status AS 'Patient status', 
-	d.postal AS 'Postal code', 
+	d.phone AS 'Phone number', 
 	a.appointment_date AS 'Appointment date',
-a.status AS 'Appointment StatusCode',
-        s.description AS 'Appointment Status',
+    s.description AS 'Appointment status',
+	a.type AS 'Appointment type', 
+	lli.label AS 'Reason code', 
+	a.notes AS 'Notes', 
 	a.start_time AS 'Start time', 
 	a.end_time AS 'End time', 
 	@duration:=(TIME_FORMAT(SEC_TO_TIME(FLOOR((TIME_TO_SEC((TIMEDIFF(a.end_time,a.start_time)))+450)/900)*900),'%H:%i')) AS 'Duration',
 	(TIME_FORMAT(@totaltime:=(ADDTIME(@duration,@totaltime)),'%H:%i')) AS 'Total', 
-	a.type AS 'Appointment type', 
-	lli.value AS 'Reason Code', 
-	CONCAT(p.first_name, " ", p.last_name) AS 'Clinician' 
+	CONCAT(p.first_name, " ", p.last_name) AS 'Clinician', 
+
 FROM 
 	demographic d
 	INNER JOIN appointment a 
 		ON (d.demographic_no = a.demographic_no) 
+	INNER JOIN appointmentType t
+		ON (a.type = t.name)
 	INNER JOIN provider p 
 		ON (a.provider_no = p.provider_no) 
 	INNER JOIN LookupListItem lli 
@@ -33,19 +35,16 @@ WHERE
 	BINARY a.status LIKE '{aptstatus}%'
         AND LEFT(a.status, '1') = LEFT(s.status, '1')
         AND d.last_name NOT LIKE 'BOOKED'
-        AND d.last_name NOT LIKE 'DO NOT BOOK'
+        AND d.last_name NOT IN ('test', 'tests', 'booked', 'offsite', 'off site', 'boop', 'DO NOT BOOK')
         AND a.appointment_date BETWEEN 
 		IF ('{apt_date_from}' = '', (CURRENT_DATE - INTERVAL 30 Day), '{apt_date_from}') 
 			AND 
-		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}')
-	AND a.type LIKE '{apt_type}'  
+		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
 	AND a.provider_no LIKE '{provider}' 
-	AND d.patient_status LIKE '{patient_status}' 
-	AND d.sex LIKE '{patient_gender}' 
-HAVING `Date of birth` BETWEEN
-		IF ('{birth_date_from}' = '', (CURRENT_DATE - INTERVAL 110 YEAR), '{birth_date_from}') 
-			AND 
-		IF ('{birth_date_to}' = '', (CURRENT_DATE), '{birth_date_to}');
+	AND t.id LIKE '{apt_type}'
+	AND lli.id LIKE '{aptreason}'
+
+ORDER BY a.appointment_date, d.demographic_no, a.status ASC; 
 </query>
 
 <param id="apt_date_from" type="text" description="Appointments from (YYYY-MM-DD, default: last 30 days)" />
@@ -56,8 +55,7 @@ HAVING `Date of birth` BETWEEN
 <param-query>
 (SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) AS provider_name
 FROM provider p
-WHERE p.status = 1
-	AND p.provider_type != 'admin')
+WHERE p.status = 1)
 UNION
 (SELECT '%', 'All clinicians')
 ORDER BY provider_name ASC;
@@ -76,32 +74,21 @@ ORDER BY status ASC;
 
 <param id="apt_type" type="list" description="Appointment Type">
 <param-query>
-(SELECT DISTINCT a.type AS type_id, IF(a.type=' ','-All blanks-',a.type) AS type_list FROM appointment a)
+(SELECT t.id, t.name FROM appointmentType t)
 UNION
 (SELECT '%', ' All types')
-ORDER BY type_list ASC;
+ORDER BY name ASC;
 </param-query>
 </param>
 
-<param id="birth_date_from" type="text" description="Birth date from (YYYY-MM-DD, default: last 110 Years)" />
-
-<param id="birth_date_to" type="text" description="Birth date to (YYYY-MM-DD, default: today)" />
-
-<param id="patient_gender" type="list" description="Gender">
+<param id="aptreason" type="list" description="Appointment Reason">
 <param-query>
-(SELECT DISTINCT d.sex AS 'patient_gender_id', d.sex AS 'patient_gender_list' FROM demographic d)
+(SELECT lli.id, lli.label
+FROM LookupListItem lli
+WHERE lli.id IN (113, 116, 117))
 UNION
-(SELECT '%', ' All genders')
-ORDER BY patient_gender_list ASC;
-</param-query>
-</param>
-
-<param id="patient_status" type="list" description="Patient Status">
-<param-query>
-(SELECT DISTINCT d.patient_status AS 'patient_status_id', d.patient_status AS 'patient_status_list' FROM demographic d)
-UNION
-(SELECT '%', ' All statuses')
-ORDER BY patient_status_list ASC;
+(SELECT '%', 'All reasons')
+ORDER BY label ASC;
 </param-query>
 </param>
 
