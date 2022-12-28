@@ -1,4 +1,4 @@
-<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v1.6 RN/JD edit" active="1">
+<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v1.8 RN/JD edit" active="1">
 
 <query>
 SELECT 
@@ -10,7 +10,7 @@ SELECT
 	d.phone AS 'Phone number', 
 	a.appointment_date AS 'Appointment date',
     s.description AS 'Appointment status',
-	a.type AS 'Appointment type', 
+	t.name AS 'Appointment type', 
 	lli.label AS 'Reason code', 
 	a.notes AS 'Notes', 
 	a.start_time AS 'Start time', 
@@ -18,13 +18,13 @@ SELECT
 	@duration:=(TIME_FORMAT(SEC_TO_TIME(FLOOR((TIME_TO_SEC((TIMEDIFF(a.end_time,a.start_time)))+450)/900)*900),'%H:%i')) AS 'Duration',
 	(TIME_FORMAT(@totaltime:=(ADDTIME(@duration,@totaltime)),'%H:%i')) AS 'Total', 
 	CONCAT(p.first_name, " ", p.last_name) AS 'Clinician', 
-
+	a.creator AS 'Appointment creator'
 FROM 
 	demographic d
 	INNER JOIN appointment a 
 		ON (d.demographic_no = a.demographic_no) 
 	INNER JOIN appointmentType t
-		ON (a.type = t.name)
+		ON (a.type = t.id)
 	INNER JOIN provider p 
 		ON (a.provider_no = p.provider_no) 
 	INNER JOIN LookupListItem lli 
@@ -43,6 +43,7 @@ WHERE
 	AND a.provider_no LIKE '{provider}' 
 	AND t.id LIKE '{apt_type}'
 	AND lli.id LIKE '{aptreason}'
+	AND a.creator LIKE '{aptcreator}'
 
 ORDER BY a.appointment_date, d.demographic_no, a.status ASC; 
 </query>
@@ -91,5 +92,17 @@ UNION
 ORDER BY label ASC;
 </param-query>
 </param>
+
+<param id="aptcreator" type="list" description="Appointment Creator">
+<param-query>
+(SELECT CONCAT(p.last_name, ", ", p.first_name) AS provider_name, CONCAT(p.last_name, ", ", p.first_name) AS provider_list
+FROM provider p
+WHERE p.status = 1)
+UNION
+(SELECT '%', 'All creators')
+ORDER BY provider_name ASC;
+</param-query>
+</param>
+
 
 </report>
