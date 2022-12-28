@@ -1,0 +1,52 @@
+<report title="Appointments By Type" description="Returns all appointments booked under a selected appointment type and date range." active="1"><query>
+(SELECT CONCAT('TOTAL ', COUNT(list.demo) ) AS "Appt. Date",'' AS "Start Time", '' AS "End Time", '' AS 'Id', '' AS 'Patient', '' AS "Phone", '' AS "G", '' AS "HC", '' AS 'Reason', '' AS "Notes",'' AS 'Type', '' AS 'Date of birth' 
+FROM 
+	( SELECT d.demographic_no AS 'demo', a.start_time
+	FROM demographic d
+	INNER JOIN appointment a
+	ON (d.demographic_no = a.demographic_no)
+	WHERE a.type = IF( '{apttype}'='-ALL-', a.type, '{apttype}')
+AND a.type > ''
+	AND ( DATE(a.appointment_date) BETWEEN DATE('{apt_date_from}') AND DATE('{apt_date_to}') )
+	#GROUP BY d.demographic_no HAVING MIN(a.appointment_date)
+ ) 
+list )
+UNION
+( SELECT 
+a.appointment_date,
+a.start_time,
+a.end_time,
+d.demographic_no , 
+CONCAT(d.last_name, ", ", d.first_name),
+d.phone, 
+d.sex, 
+d.hin,
+a.reason, 
+a.notes,
+a.type,
+CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth)
+FROM demographic d
+INNER JOIN appointment a
+ON (d.demographic_no = a.demographic_no)
+WHERE a.type = IF( '{apttype}'='-ALL-', a.type, '{apttype}')
+AND a.type > ''
+AND ( DATE(a.appointment_date) BETWEEN DATE('{apt_date_from}') AND DATE('{apt_date_to}') )
+#GROUP BY d.demographic_no HAVING MIN(a.appointment_date)
+) 
+ORDER BY type;
+</query>
+
+<param id="apt_date_from" type="date" description="Appointments from: " />
+<param id="apt_date_to" type="date" description="Appointments to: " />
+
+<param id="apttype" type="list" description="Type">
+
+<param-query>
+  ( SELECT `name`, LEFT( `name`, 40) FROM appointmentType )
+    UNION
+  ( SELECT '-ALL-', ' All types')
+  ORDER BY `name` ASC ;
+</param-query>
+
+</param>
+</report>
