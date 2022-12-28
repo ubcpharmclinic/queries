@@ -1,0 +1,114 @@
+<report title="DTP Module Queries" description="Pulls data from the DTP module- v1.1 RN edit" active="1">
+
+<query>
+# DTP Module Query
+SELECT d.first_name AS 'First Name', 
+       d.last_name AS 'Last Name', 
+       d.demographic_no, 
+       dr.BN,
+       dr.GN,
+       dr.customName, 
+       dtpi.name AS 'DTP',
+       dtpc.comment AS 'Comment',
+       dtppbt.name AS 'Probability',
+       dtpp.name AS 'Priority Level',
+       dtps.name AS 'Severity',
+       dtppa.name AS 'Pharm Action',
+       dtpst.name AS 'DTP Status',
+       dtp.date_identified AS 'Date Identified',
+       dtp.date_response AS 'Follow Up Date',
+       CONCAT(p.first_name, " ", p.last_name, IF(dc.mrp = 1, "(MRP)", "")) AS 'MRP'
+FROM 
+      provider p, DemographicContact dc, DemographicContactType dct, DrugTherapyProblem dtp     
+      INNER JOIN demographic d
+      ON (dtp.demographic_no = d.demographic_no)
+      LEFT JOIN drugTherapyProblemComment dtpc
+      ON (dtp.comment_id = dtpc.id)
+      LEFT JOIN drugs dr
+      ON (dtp.drug_id = dr.drugid)
+      LEFT JOIN lu_drugTherapyProblemIssue dtpi
+      ON (dtp.issue_id = dtpi.id)
+      LEFT JOIN lu_drugTherapyProblemPriority dtpp
+      ON (dtp.priority_id = dtpp.id)
+      LEFT JOIN lu_drugTherapyProblemSeverity dtps
+      ON (dtp.severity_id = dtps.id)
+      LEFT JOIN lu_drugTherapyProblemPharmacistAction dtppa
+      ON (dtp.pharmacist_action_id = dtppa.id)
+      LEFT JOIN lu_drugTherapyProblemProbability dtppbt
+      ON (dtp.probability_id = dtppbt.id)
+      LEFT JOIN lu_drugTherapyProblemStatus dtpst
+      ON (dtp.status_id = dtpst.id)
+WHERE dtpi.id LIKE '{dtpType}'
+      AND dtpp.id LIKE '{dtpPriorityLevel}'
+      AND dtps.id LIKE '{dtpSeverity}'
+      AND dtppa.id LIKE '{pharmAction}'
+      AND dtppbt.id LIKE '{dtpProbability}'
+      AND dtpst.id LIKE '{dtpStatus}' #dtpStatus
+      AND dtp.date_identified BETWEEN "{date_from}" AND "{date_to}"
+      AND d.demographic_no = dc.demographicNo
+      AND dc.type = dct.id AND dct.type LIKE "provider" 
+      AND dc.deleted = 0
+      AND dc.contactId = p.provider_no
+ORDER BY d.last_name, dtp.demographic_no ASC;
+</query>
+
+<param id="date_from" type="date" description="Appointments from:" />
+
+<param id="date_to" type="date" description="Appointments to:" />
+
+<param id="dtpType" type="list" description="DTP Type:">
+<param-query>
+(SELECT '%', '-All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemIssue);
+</param-query>
+</param>
+
+
+<param id="dtpPriorityLevel" type="list" description="Priority:">
+<param-query>
+(SELECT '%', '-All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemPriority);
+</param-query>
+</param>
+
+<param id="dtpSeverity" type="list" description="Severity:">
+<param-query>
+(SELECT '%', '-All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemSeverity);
+</param-query>
+</param>
+
+<param id="dtpProbability" type="list" description="Probability:">
+<param-query>
+(SELECT '%', '-All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemProbability);
+</param-query>
+</param>
+
+<param id="dtpStatus" type="list" description="Status:">
+<param-query>
+(SELECT '%', ' -All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemStatus);
+</param-query>
+</param>
+
+<param id="pharmAction" type="list" description="Pharm Action:">
+<param-query>
+(SELECT '%', '-All Types-')
+UNION
+(SELECT id, name
+FROM lu_drugTherapyProblemPharmacistAction);
+</param-query>
+</param>
+
+</report>
