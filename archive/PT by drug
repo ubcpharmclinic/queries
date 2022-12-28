@@ -1,0 +1,29 @@
+<report title="PT by drug" description="Search for patients by prescribed drug and prescribed date. Displays demographic number, drug name, patient name, and provider number. Sorted alphabetically by patient last name." active="1">
+
+<query>
+   	SELECT 
+		dr.demographic_no, 
+		dr.BN, 
+		d.last_name, 
+		d.first_name,
+                dr.provider_no 
+   	FROM
+		drugs dr
+	INNER JOIN 
+		demographic d 
+		ON (dr.demographic_no = d.demographic_no)
+   	WHERE
+		(dr.BN LIKE '%{drugname}%' OR dr.GN LIKE '%{drugname}%') 
+		AND
+		dr.rx_date > '{rx_date}' 
+	ORDER BY 
+		d.last_name;
+</query>
+
+<param id="drugname" type="text" description="Drug keyword (e.g. ibuprofen):">
+</param>
+
+<param id="rx_date" type="date" description="Rx date (from date):">
+</param>
+
+</report>
