@@ -1,0 +1,36 @@
+<report title="Appointments By Status" description="Get all appointments by appointment status. Narrow results by appointment date and provider" active="1"><query>
+SELECT d.demographic_no AS 'Id', 
+       CONCAT(d.last_name, ", ", d.first_name) AS 'Patient',
+       a.appointment_date AS 'Appt Date',
+       p.description
+FROM demographic d
+INNER JOIN appointment a 
+ON (d.demographic_no = a.demographic_no),
+appointment_status p
+WHERE a.`status` = IF( '{aptstatus}'='-ALL-', a.`status`, '{aptstatus}')
+AND ( DATE(a.appointment_date) BETWEEN DATE('{apt_date_from}') AND DATE('{apt_date_to}') )
+AND a.provider_no LIKE '{provider}'
+AND IF(LENGTH(a.status) = '2', a.status=Left(p.status, '1'), (a.status = p.status))
+ORDER BY d.last_name ASC;
+</query>
+<param id="apt_date_from" type="date" description="From (Appt Date)" />
+<param id="apt_date_to" type="date" description="To (Appt Date)" />
+
+<param id="aptstatus" type="list" description="Appt Status">
+<param-query>
+  ( SELECT `status`, description FROM appointment_status )
+    UNION
+  ( SELECT '-ALL-', ' All types')
+  ORDER BY `status` ASC;
+</param-query>
+</param>
+<param id="provider" type="list" description="Appointment Provider">
+<choice id="%">- ALL PROVIDERS -</choice>
+<param-query>
+SELECT p.provider_no, CONCAT(p.last_name, ", ", p.first_name) 
+FROM provider p
+WHERE p.status = 1
+ORDER BY p.provider_type, p.last_name;
+</param-query>
+</param>
+</report>
