@@ -1,0 +1,34 @@
+<report title="PT by Provider Name" description="Search for active patients under a provider. Displays patient name, address, and contact. Sorted alphabetically by last name." active="1">
+
+<query>
+SELECT DISTINCT 
+	d.last_name,
+	d.first_name,
+	d.address,
+	d.city,
+	d.province,
+	d.postal,
+	d.phone 
+FROM 
+	demographic d, 
+	casemgmt_note c
+WHERE
+	d.demographic_no = c.demographic_no
+	AND c.signed =  1 
+	AND c.provider_no = '{provider_no}' 
+ORDER BY last_name;
+</query>
+ 
+<param id="provider_no" type="list" description="Provider:">
+      <param-query>
+		SELECT
+			provider_no, 
+			CONCAT(last_name, ', ', first_name, ' (', provider_no, ')') 
+		FROM provider 
+		WHERE provider_no >= '100' AND provider_no < '5999' 
+		ORDER BY last_name;
+	</param-query>
+    </param>
+
+
+</report>
