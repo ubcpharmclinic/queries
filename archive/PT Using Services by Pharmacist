@@ -1,0 +1,32 @@
+<report title="PT Using Services by Pharmacist" description="Search for patients  using Clinic services by internal provider number, based on having a signed encounter. Displays patient name, contact info, and observation date of encounter. Sorted alphabetically by patient last name." active="1">
+
+<query>
+SELECT
+	d.last_name,
+	d.first_name,
+	d.address, 
+	d.city, 
+	d.postal,
+	c.provider_no, 
+	c.observation_date 
+FROM 
+	demographic d, 
+	casemgmt_note c 
+WHERE 
+	d.demographic_no = c.demographic_no 
+	AND c.note_id 
+		IN (SELECT note_id FROM casemgmt_note WHERE signed = 1) 
+	AND (SELECT DATE (c.observation_date)) >= '{start}'  
+	AND (SELECT DATE (c.observation_date)) <= '{finish}'
+	AND c.provider_no ='{doctor}' 
+GROUP BY d.last_name;
+
+</query>
+
+<param id="doctor" type="text" description="Provider number from OSCAR ADMIN provider record (e.g. 1004):">
+</param>
+<param id="start" type="date" description="Appointments from:">
+</param>
+<param id="finish" type="date" description="Appointments to:">
+</param>
+</report>
