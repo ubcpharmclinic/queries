@@ -1,8 +1,9 @@
-<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v1.9 RN/JD edit" active="1">
+<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v2.0 RN/JD edit" active="1">
 
 <query>
 SELECT 
 	d.demographic_no AS 'Id', 
+    d.hin AS 'PHN',
 	CONCAT(d.last_name, ", ", d.first_name) AS 'Patient', 
 	CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth) AS 'Date of birth', 
 	FLOOR(DATEDIFF(CURRENT_DATE, STR_TO_DATE(CONCAT(d.year_of_birth, '-', d.month_of_birth, '-', d.date_of_birth), '%Y-%m-%d'))/365.25) AS 'Age', 
