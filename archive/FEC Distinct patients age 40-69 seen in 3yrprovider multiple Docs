@@ -1,0 +1,15 @@
+<report title="FEC Distinct patients age 40-69 seen in 3yr/provider multiple Docs" description="Number of distinct patients age 40-69 seen in last 3 years/provider multiple   Docs" active="1">
+<query>
+
+select p.first_name"Provider", count(distinct demo.last_name, demo.first_name)"Distinct patients age 40-69 seen in 3 yrs multiple Docs" from demographic demo, eChart e,provider p where
+demo.patient_status = 'AC' and e.encounter like "%signed%" and e.timeStamp BETWEEN DATE_SUB( CURDATE( ) ,INTERVAL 3 year ) AND CURDATE( )
+and demo.provider_no in({multi_field}) and demo.year_of_birth > (Year(CURDATE())-70) and demo.year_of_birth <= (Year(CURDATE())-40) and
+demo.demographic_no = e.demographicNo and p.provider_no = demo.provider_no 
+group by p.first_name order by p.provider_no;
+
+</query>
+
+
+<param id="multi_field" type="textlist" description="A comma-separated list of provider numbers, from Admin, Provider record ">
+   </param>
+</report>
