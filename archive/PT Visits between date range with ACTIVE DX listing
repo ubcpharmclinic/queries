@@ -1,0 +1,12 @@
+<report title="PT Visits between date range with ACTIVE DX listing" description="List of Patient Records with Registered Disease" active="1">
+ 
+<query>
+SELECT ap.appointment_date, d.demographic_no, d.last_name, d.first_name, CONCAT(d.date_of_birth,'/',d.month_of_birth,'/',d.year_of_birth)"--Date of birth--",d.address, d.city, d.postal,  d.sex, d.hin, dx.dxresearch_code
+FROM demographic d, dxresearch dx, appointment ap WHERE dx.status = 'A' AND ap.demographic_no = d.demographic_no AND ap.appointment_date >= '{fromdate}' and ap.appointment_date <= '{todate}' ORDER by ap.appointment_date
+ </query>
+ 
+<param id="fromdate" type="date" description="Start Date">
+</param>
+<param id="todate" type="date" description="End Date">
+</param>
+</report>
