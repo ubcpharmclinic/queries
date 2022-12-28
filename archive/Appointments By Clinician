@@ -1,4 +1,4 @@
-<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v1.8 RN/JD edit" active="1">
+<report title="Appointments by clinician v3.0" description="Generating appointment report by clinician/status/type/initial/FU within a date range- v1.9 RN/JD edit" active="1">
 
 <query>
 SELECT 
@@ -9,9 +9,10 @@ SELECT
 	d.sex AS 'Sex', 
 	d.phone AS 'Phone number', 
 	a.appointment_date AS 'Appointment date',
-    s.description AS 'Appointment status',
+    lcl.label AS 'Appointment location',
+        s.description AS 'Appointment status',
 	t.name AS 'Appointment type', 
-	lli.label AS 'Reason code', 
+	lrc.label AS 'Reason code', 
 	a.notes AS 'Notes', 
 	a.start_time AS 'Start time', 
 	a.end_time AS 'End time', 
@@ -27,8 +28,10 @@ FROM
 		ON (a.type = t.id)
 	INNER JOIN provider p 
 		ON (a.provider_no = p.provider_no) 
-	INNER JOIN LookupListItem lli 
-		ON (a.reasonCode = lli.id), 
+	INNER JOIN LookupListItem lrc 
+		ON (a.reasonCode = lrc.id) 
+    LEFT JOIN LookupListItem lcl 
+        ON (a.locationCode = lcl.id),
 	(SELECT @totaltime:='00:00:00') c,
         appointment_status s
 WHERE 
@@ -42,7 +45,7 @@ WHERE
 		IF ('{apt_date_to}' = '', (CURRENT_DATE), '{apt_date_to}') 
 	AND a.provider_no LIKE '{provider}' 
 	AND t.id LIKE '{apt_type}'
-	AND lli.id LIKE '{aptreason}'
+	AND lrc.id LIKE '{aptreason}'
 	AND a.creator LIKE '{aptcreator}'
 
 ORDER BY a.appointment_date, d.demographic_no, a.status ASC; 
