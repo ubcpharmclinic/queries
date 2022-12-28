@@ -1,0 +1,50 @@
+<report title="PT by drug expiry" description="Search for patients by pharmacist, drug expiry, and appointment date. Displays patient name, drug, prescribed date, etc. Sorted alphabetically by patient last name." active="1">
+ 
+<query>
+	SELECT DISTINCT
+		CONCAT(demo.last_name,", ", demo.first_name) as Name, 
+		demo.email as "E-mail", 
+		demo.roster_status as "RO", 
+		d.BN as "Rx-BN", 
+		d.customName as "Rx-customName",
+		d.GN as "Rx-GN", 
+		d.written_date as "Written Date", 
+		d.end_date as "End Date", 
+		demo.phone as 'Home', 
+		demo.provider_no as "MRP",
+		CONCAT(LEFT(prov.first_name,1), LEFT(prov.last_name,1)) as "Ord. by"
+	FROM 
+		drugs d, 
+		demographic demo, 
+		dxresearch dx, 
+		provider prov
+	WHERE 
+		d.end_date >= '{start}' AND d.end_date <= '{end}'
+  		AND d.demographic_no = demo.demographic_no 
+		AND demo.patient_status = 'AC'  
+  		AND demo.roster_status not in ('MOVED','Private billings') 
+  		AND d.provider_no=prov.provider_no
+  		AND d.long_term = 1
+  		AND (d.provider_no LIKE {provider_no} or d.provider_no = {provider_no} or demo.provider_no = {provider_no})
+ 		AND d.demographic_no NOT IN (select a.demographic_no from appointment a where a.appointment_date >= '{startapp}' 		AND a.appointment_date <= '{endapp}')
+
+	ORDER BY 
+		demo.provider_no, 
+		demo.last_name, 
+		demo.first_name, 
+		d.end_date;
+</query>
+
+<param id="provider_no" type="list" description="Pharmacist">
+<choice id="%">- All -</choice>
+<param-query>
+SELECT pr.provider_no, CONCAT(pr.last_name,',',pr.first_name,'(',pr.provider_no,')') FROM provider pr WHERE pr.ohip_no IS NOT NULL AND pr.ohip_no != '' AND pr.status = 1 ORDER BY pr.last_name ASC;
+</param-query>
+</param>
+
+<param id="start" type="date" description="Expiry date from:"> </param>
+<param id="end" type="date" description="Expiry date to:"> </param>   
+<param id="startapp" type="date" description="Appointments from:"> </param>
+<param id="endapp" type="date" description="Appointments to:"> </param>   
+
+</report>
